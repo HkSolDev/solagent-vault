@@ -1,0 +1,10 @@
+/Users/mrblackghost/.gemini/antigravity/scratch/solagent-vault/target/debug/deps/memoffset-ff3436771946dbd7.d: /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/lib.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/raw_field.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/offset_of.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/span_of.rs
+
+/Users/mrblackghost/.gemini/antigravity/scratch/solagent-vault/target/debug/deps/libmemoffset-ff3436771946dbd7.rlib: /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/lib.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/raw_field.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/offset_of.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/span_of.rs
+
+/Users/mrblackghost/.gemini/antigravity/scratch/solagent-vault/target/debug/deps/libmemoffset-ff3436771946dbd7.rmeta: /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/lib.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/raw_field.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/offset_of.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/span_of.rs
+
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/lib.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/raw_field.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/offset_of.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/memoffset-0.9.1/src/span_of.rs:

@@ -1,0 +1,11 @@
+/Users/mrblackghost/.gemini/antigravity/scratch/solagent-vault/target/debug/deps/sha3-ef2054957e482cef.d: /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/lib.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/paddings.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/macros.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/reader.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/state.rs
+
+/Users/mrblackghost/.gemini/antigravity/scratch/solagent-vault/target/debug/deps/libsha3-ef2054957e482cef.rlib: /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/lib.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/paddings.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/macros.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/reader.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/state.rs
+
+/Users/mrblackghost/.gemini/antigravity/scratch/solagent-vault/target/debug/deps/libsha3-ef2054957e482cef.rmeta: /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/lib.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/paddings.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/macros.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/reader.rs /Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/state.rs
+
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/lib.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/paddings.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/macros.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/reader.rs:
+/Users/mrblackghost/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sha3-0.9.1/src/state.rs:

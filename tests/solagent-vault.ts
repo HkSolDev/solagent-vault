@@ -94,12 +94,6 @@ describe("solagent-vault", () => {
       providerWallet.publicKey
     );
 
-    // Airdrop SOL to agent signer for transaction gas fees
-    const signature = await provider.connection.requestAirdrop(
-      agentSigner.publicKey,
-      1_000_000_000 // 1 SOL
-    );
-    await provider.connection.confirmTransaction(signature);
   });
 
   it("Initializes the master vault", async () => {
@@ -118,24 +112,26 @@ describe("solagent-vault", () => {
     assert.equal(vault.totalDeposited.toString(), "0");
   });
 
-  it("Creates an active agent PDA with spend caps", async () => {
+  it("Creates an active agent PDA and funds it with gas SOL on-chain", async () => {
     const maxPerCall = new anchor.BN(10_000_000); // 10 USDC cap per call
     const maxPerMinute = new anchor.BN(15_000_000); // 15 USDC cap per minute
     
     // Empty allowlist (allows all providers for simplicity in basic tests)
     const allowedProviders = Array(5).fill(anchor.web3.PublicKey.default);
+    const solAllocation = new anchor.BN(200_000_000); // 0.2 SOL gas tank
 
     await program.methods
       .createAgent(
         agentId,
-        agentSigner.publicKey,
         maxPerCall,
         maxPerMinute,
-        allowedProviders
+        allowedProviders,
+        solAllocation
       )
       .accounts({
         vaultState: vaultStatePda,
         agentState: agentStatePda,
+        agentSigner: agentSigner.publicKey,
         owner: owner.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -149,6 +145,10 @@ describe("solagent-vault", () => {
     assert.deepEqual(agent.status, { active: {} });
     assert.equal(agent.maxPerCall.toString(), maxPerCall.toString());
     assert.equal(agent.maxPerMinute.toString(), maxPerMinute.toString());
+
+    // Verify the agent received the 0.2 SOL gas tank automatically!
+    const agentBalance = await provider.connection.getBalance(agentSigner.publicKey);
+    assert.equal(agentBalance, 200_000_000);
   });
 
   it("Deposits USDC into the Agent PDA account", async () => {
@@ -162,6 +162,7 @@ describe("solagent-vault", () => {
         owner: owner.publicKey,
         ownerTokenAccount: ownerTokenAccount,
         agentTokenAccount: agentTokenAccount,
+        usdcMint: usdcMint,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
@@ -182,6 +183,7 @@ describe("solagent-vault", () => {
         agentState: agentStatePda,
         agentSigner: agentSigner.publicKey,
         agentTokenAccount: agentTokenAccount,
+        usdcMint: usdcMint,
         providerWallet: providerWallet.publicKey,
         providerTokenAccount: providerTokenAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -208,6 +210,7 @@ describe("solagent-vault", () => {
           agentState: agentStatePda,
           agentSigner: agentSigner.publicKey,
           agentTokenAccount: agentTokenAccount,
+          usdcMint: usdcMint,
           providerWallet: providerWallet.publicKey,
           providerTokenAccount: providerTokenAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -230,6 +233,7 @@ describe("solagent-vault", () => {
           agentState: agentStatePda,
           agentSigner: agentSigner.publicKey,
           agentTokenAccount: agentTokenAccount,
+          usdcMint: usdcMint,
           providerWallet: providerWallet.publicKey,
           providerTokenAccount: providerTokenAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -261,6 +265,7 @@ describe("solagent-vault", () => {
           agentState: agentStatePda,
           agentSigner: agentSigner.publicKey,
           agentTokenAccount: agentTokenAccount,
+          usdcMint: usdcMint,
           providerWallet: providerWallet.publicKey,
           providerTokenAccount: providerTokenAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -283,6 +288,7 @@ describe("solagent-vault", () => {
         owner: owner.publicKey,
         agentTokenAccount: agentTokenAccount,
         ownerTokenAccount: ownerTokenAccount,
+        usdcMint: usdcMint,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
@@ -302,6 +308,7 @@ describe("solagent-vault", () => {
         owner: owner.publicKey,
         agentTokenAccount: agentTokenAccount,
         ownerTokenAccount: ownerTokenAccount,
+        usdcMint: usdcMint,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();

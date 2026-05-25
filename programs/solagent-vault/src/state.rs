@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+#[derive(InitSpace)]
 #[account]
 pub struct VaultState {
     pub owner: Pubkey,
@@ -8,11 +9,12 @@ pub struct VaultState {
     pub bump: u8,
 }
 
+#[derive(InitSpace)]
 #[account]
 pub struct AgentState {
     pub vault: Pubkey,
     pub owner: Pubkey,
-    pub agent_signer: Pubkey,
+    pub agent_signer: Pubkey, // Store the agent signer pubkey
     pub balance: u64,
     pub status: AgentStatus,
     pub max_per_call: u64,
@@ -20,11 +22,11 @@ pub struct AgentState {
     pub last_window_start: i64,
     pub spent_this_window: u64,
     pub total_spent: u64,
-    pub allowed_providers: [Pubkey; 5],
+    pub allowed_providers: [Pubkey; 5], // The allowed provider wallets
     pub bump: u8,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum AgentStatus {
     Active,
     Paused,

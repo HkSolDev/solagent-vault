@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub mod ErrorCode {
+pub enum VaultError {
     #[msg("Calculation overflowed")]
     Overflow,
     #[msg("Agent is not currently active")]

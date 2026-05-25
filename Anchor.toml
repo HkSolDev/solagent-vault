@@ -1,18 +1,17 @@
 [toolchain]
 
 [features]
-seeds = false
+resolution = true
 skip-lint = false
 
 [programs.localnet]
-solagent_vault = "AgentVault11111111111111111111111111111111"
-
-[registry]
-url = "https://api.apr.dev"
+solagent_vault = "AvzxLJP5TatmG2kxs43Yc5uTEFesVfcqWXc5yddv5TK8"
 
 [provider]
-cluster = "Localnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]

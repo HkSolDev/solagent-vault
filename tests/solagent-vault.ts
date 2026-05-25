@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program } from "@anchor-lang/core";
 import { SolagentVault } from "../target/types/solagent_vault";
 import { 
   TOKEN_PROGRAM_ID, 

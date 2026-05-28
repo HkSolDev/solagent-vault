@@ -1,11 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import React, { useState, useEffect } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useAgentState, OnChainAgent } from "../hooks/use-agent-state";
 import { useAnchorProgram } from "../hooks/use-anchor-program";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
+
+import ErrorModalOverlay from "./error-modal-overlay";
+import AgentTerminal from "./agent-terminal";
+import AgentListCard from "./agent-list-card";
+import AutopilotPanel from "./autopilot-panel";
+import VaultInitPanel from "./vault-init-panel";
+import AgentRegisterForm from "./agent-register-form";
+import SimulatorHotkeyCard from "./simulator-hotkey-card";
+import SpendingPolicyTestCard from "./spending-policy-test-card";
 
 interface LogLine {
   timestamp: string;
@@ -14,7 +23,6 @@ interface LogLine {
 }
 
 export default function DashboardSimulator() {
-  const { connection } = useConnection();
   const { publicKey, connected } = useWallet();
   const { vaultInitialized, agents, loading, initializeVault, reload } = useAgentState();
   const program = useAnchorProgram();
@@ -43,7 +51,6 @@ export default function DashboardSimulator() {
   ]);
 
   const [actionLoading, setActionLoading] = useState(false);
-  const terminalContainerRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
 
   // Autopilot Presentation Simulation state
@@ -63,14 +70,6 @@ export default function DashboardSimulator() {
       setAgentIdInput("1");
     }
   }, [agents]);
-
-  // Auto scroll terminal container only (fixes window scrolling bug!)
-  useEffect(() => {
-    const container = terminalContainerRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [terminalLogs]);
 
   // Generate simulated agent hot-key if not already initialized
   useEffect(() => {
@@ -130,14 +129,14 @@ export default function DashboardSimulator() {
   };
 
   const triggerErrorPopup = (title: string, err: any) => {
-    let msg = err.message || err.toString();
+    let msg = typeof err === "string" ? err : (err.message || err.toString());
     let code = "On-Chain Error";
     
     // Map Anchor custom errors to user-friendly messages
     if (msg.includes("6000") || msg.includes("0x1770") || msg.includes("Overflow")) {
       msg = "Calculation overflowed inside the smart contract arithmetic checks.";
       code = "6000 (Overflow)";
-    } else if (msg.includes("6001") || msg.includes("0x1771") || msg.includes("AgentNotActive") || msg.includes("PAUSED")) {
+    } else if (msg.includes("6001") || msg.includes("0x1771") || msg.includes("AgentNotActive") || msg.includes("PAUSED") || msg.includes("AgentStatus is PAUSED")) {
       msg = "This Agent has been PAUSED by the Vault Admin. On-chain spends are fully frozen.";
       code = "6001 (AgentPaused)";
     } else if (msg.includes("6002") || msg.includes("0x1772") || msg.includes("ProviderNotAllowed")) {
@@ -149,11 +148,11 @@ export default function DashboardSimulator() {
     } else if (msg.includes("6004") || msg.includes("0x1774") || msg.includes("ExceedsRateLimit")) {
       msg = "Rate limit breached! This agent has exceeded its configured per-minute USDC limits.";
       code = "6004 (ExceedsRateLimit)";
-    } else if (msg.includes("custom program error: 0x0") || msg.includes("already in use")) {
+    } else if (msg.includes("custom program error: 0x0") || msg.includes("already in use") || msg.includes("Already Registered")) {
       msg = "The Agent ID already exists or the PDA account has already been registered on-chain!";
       code = "0x0 (AccountAlreadyExists)";
     } else if (msg.includes("User rejected the request")) {
-      msg = "Transaction cancelled: You rejected the signature request in your browser wallet.";
+      msg = "Transaction cancelled: You rejected the signature request in your wallet.";
       code = "SignatureRejected";
     }
 
@@ -163,7 +162,6 @@ export default function DashboardSimulator() {
       code,
     });
   };
-
 
   // Setup on-chain program PDA derivation helpers
   const getVaultPda = (owner: PublicKey) => {
@@ -238,6 +236,23 @@ export default function DashboardSimulator() {
     if (!publicKey || !simulatedSigner) return;
     setActionLoading(true);
     const id = parseInt(agentIdInput);
+    
+    // Client-side precheck to block duplicate/failing transaction
+    const agentExists = agents.some((a) => a.id === id);
+    if (agentExists) {
+      const errorMsg = `Agent #${id} has already been registered on the blockchain. The input ID has been automatically bumped to prevent a duplicate signature attempt.`;
+      addLog("error", `[BLOCKED] Agent #${id} has already been registered. Skipping transaction execution...`);
+      setActionLoading(false);
+      triggerErrorPopup(
+        "Agent ID Already Registered", 
+        errorMsg
+      );
+      // Auto-increment the input for the user
+      const maxId = Math.max(...agents.map((a) => a.id), 0);
+      setAgentIdInput((maxId + 1).toString());
+      return;
+    }
+
     addLog("info", `Registering Agent #${id} with secure Spending Limits on-chain...`);
 
     try {
@@ -393,140 +408,40 @@ export default function DashboardSimulator() {
       <div className="lg:col-span-7 flex flex-col gap-6">
         
         {/* Autopilot Demo Panel */}
-        <div className="glass-panel p-6 rounded-xl border border-electric-purple/30 bg-electric-purple/5 flex flex-col gap-4 relative overflow-hidden">
-          {/* Subtle neon glow inside card background */}
-          <div className="absolute top-0 right-0 w-24 h-24 bg-electric-purple/10 blur-xl pointer-events-none" />
-          
-          <div className="flex justify-between items-center relative z-10">
-            <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-              <span className="text-electric-purple">✨</span> ONE-CLICK AI VAULT DEMO
-            </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-electric-purple/35 bg-electric-purple/10 text-electric-purple">
-              Presentation Autopilot
-            </span>
-          </div>
-
-          <p className="text-xs text-zinc-400 leading-relaxed font-mono relative z-10">
-            Confused on how to start? Sit back and click play. The autopilot will automatically seed keys, request faucet SOL, initialize the vault PDA, register Agent #1, fund USDC, and execute standard API spends and malicious hack overrides live!
-          </p>
-
-          {autoRunning ? (
-            <div className="flex flex-col gap-2 mt-2 relative z-10">
-              <div className="flex justify-between text-xs font-mono text-zinc-300">
-                <span>{currentStep}</span>
-                <span className="text-electric-purple font-bold">{stepPercent}%</span>
-              </div>
-              <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-glass-border">
-                <div 
-                  className="bg-gradient-to-r from-electric-purple to-vivid-cyan h-full transition-all duration-500 shadow-glow-purple"
-                  style={{ width: `${stepPercent}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={runAutopilotDemo}
-              disabled={actionLoading}
-              className="py-3 px-4 rounded bg-electric-purple hover:bg-electric-purple/90 text-white font-bold font-mono text-sm transition-all shadow-glow-purple hover:scale-[1.01] mt-1 relative z-10 flex items-center justify-center gap-2"
-            >
-              <span>🚀</span> Start Autonomous Security Playback
-            </button>
-          )}
-        </div>
+        <AutopilotPanel
+          autoRunning={autoRunning}
+          currentStep={currentStep}
+          stepPercent={stepPercent}
+          onStartDemo={runAutopilotDemo}
+          actionLoading={actionLoading}
+        />
         
         {/* Step 1: Initialize Vault Panel */}
-        {!connected ? (
-          <div className="glass-panel p-8 rounded-xl text-center flex flex-col gap-3">
-            <h3 className="text-xl font-bold text-white font-mono">1. Connect Your Wallet</h3>
-            <p className="text-sm text-zinc-400">
-              Please connect your devnet wallet in the playground widget above to manage spending policies.
-            </p>
-          </div>
-        ) : vaultInitialized === false ? (
-          <div className="glass-panel p-8 rounded-xl flex flex-col gap-4 border border-vivid-cyan/25">
-            <h3 className="text-xl font-bold text-white font-mono flex items-center gap-2">
-              <span>🏗️</span> Step 1: Initialize On-Chain Vault
-            </h3>
-            <p className="text-sm text-zinc-400 leading-relaxed font-mono">
-              Your wallet does not have a registered Vault State account yet. Click the button below to initialize your global spending vault on-chain.
-            </p>
-            <button
-              onClick={handleInitVault}
-              disabled={actionLoading || loading}
-              className="py-3 rounded bg-vivid-cyan text-black hover:bg-vivid-cyan/90 font-bold transition-all shadow-glow-cyan"
-            >
-              {actionLoading ? "Initializing Vault..." : "Initialize Vault State PDA"}
-            </button>
-          </div>
-        ) : (
+        <VaultInitPanel
+          connected={connected}
+          vaultInitialized={vaultInitialized}
+          actionLoading={actionLoading}
+          loading={loading}
+          onInitVault={handleInitVault}
+        />
+
+        {connected && vaultInitialized !== false && (
           <>
             {/* Step 2: Create Agent PDA config */}
-            <div className="glass-panel p-6 rounded-xl flex flex-col gap-4">
-              <h3 className="text-lg font-bold text-white font-mono flex items-center gap-2">
-                <span>🤖</span> Register Delegated Agent PDA
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-mono uppercase text-zinc-400">Agent ID (Numeric)</label>
-                  <input
-                    value={agentIdInput}
-                    onChange={(e) => setAgentIdInput(e.target.value)}
-                    type="number"
-                    className="bg-white/5 border border-glass-border px-3 py-2 rounded text-sm text-white font-mono focus:outline-none focus:border-electric-purple"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-mono uppercase text-zinc-400">SOL Seed fee allocation</label>
-                  <input
-                    value={solSeedInput}
-                    onChange={(e) => setSolSeedInput(e.target.value)}
-                    type="text"
-                    className="bg-white/5 border border-glass-border px-3 py-2 rounded text-sm text-white font-mono focus:outline-none focus:border-electric-purple"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-mono uppercase text-zinc-400">Single-Call Cap ($ USDC)</label>
-                  <input
-                    value={maxCallInput}
-                    onChange={(e) => setMaxCallInput(e.target.value)}
-                    type="text"
-                    className="bg-white/5 border border-glass-border px-3 py-2 rounded text-sm text-white font-mono focus:outline-none focus:border-electric-purple"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-mono uppercase text-zinc-400">Per-Minute Rate ($ USDC)</label>
-                  <input
-                    value={maxMinuteInput}
-                    onChange={(e) => setMaxMinuteInput(e.target.value)}
-                    type="text"
-                    className="bg-white/5 border border-glass-border px-3 py-2 rounded text-sm text-white font-mono focus:outline-none focus:border-electric-purple"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-mono uppercase text-zinc-400">Allowed Provider Wallet (Optional)</label>
-                <input
-                  value={allowedProviderInput}
-                  onChange={(e) => setAllowedProviderInput(e.target.value)}
-                  placeholder="e.g. OpenAI Gateway address"
-                  type="text"
-                  className="bg-white/5 border border-glass-border px-3 py-2 rounded text-sm text-white font-mono focus:outline-none focus:border-electric-purple"
-                />
-              </div>
-
-              <button
-                onClick={handleCreateAgent}
-                disabled={actionLoading}
-                className="py-2.5 rounded bg-electric-purple hover:bg-electric-purple/90 text-white font-bold transition-all mt-2 shadow-glow-purple"
-              >
-                {actionLoading ? "Registering on-chain..." : "Spawn Agent on Devnet"}
-              </button>
-            </div>
+            <AgentRegisterForm
+              agentIdInput={agentIdInput}
+              setAgentIdInput={setAgentIdInput}
+              solSeedInput={solSeedInput}
+              setSolSeedInput={setSolSeedInput}
+              maxCallInput={maxCallInput}
+              setMaxCallInput={setMaxCallInput}
+              maxMinuteInput={maxMinuteInput}
+              setMaxMinuteInput={setMaxMinuteInput}
+              allowedProviderInput={allowedProviderInput}
+              setAllowedProviderInput={setAllowedProviderInput}
+              actionLoading={actionLoading}
+              onRegisterAgent={handleCreateAgent}
+            />
 
             {/* List of active registered agents */}
             <div className="flex flex-col gap-4">
@@ -539,83 +454,17 @@ export default function DashboardSimulator() {
               ) : (
                 <div className="flex flex-col gap-4">
                   {agents.map((agent) => (
-                    <div
+                    <AgentListCard
                       key={agent.id}
-                      onClick={() => setActiveTab(agent.id)}
-                      className={`glass-panel p-5 rounded-xl flex flex-col gap-3 cursor-pointer ${
-                        activeTab === agent.id ? "border-electric-purple/60 bg-electric-purple/5" : ""
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-electric-purple animate-pulse" />
-                          <h4 className="font-mono font-bold text-white">Agent #{agent.id}</h4>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-                              agent.status === "Active"
-                                ? "bg-success-emerald/10 border-success-emerald/20 text-success-emerald"
-                                : "bg-emergency-red/10 border-emergency-red/20 text-emergency-red"
-                            }`}
-                          >
-                            {agent.status}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePause(agent);
-                            }}
-                            className={`text-[10px] font-mono font-bold px-3 py-1 rounded border transition-all ${
-                              agent.status === "Active"
-                                ? "bg-emergency-red/10 border-emergency-red/30 text-emergency-red hover:bg-emergency-red/20"
-                                : "bg-success-emerald/10 border-success-emerald/30 text-success-emerald hover:bg-success-emerald/20"
-                            }`}
-                          >
-                            {agent.status === "Active" ? "Pause" : "Activate"}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 text-xs font-mono text-zinc-400 mt-2">
-                        <div>
-                          PDA: <span className="text-zinc-200">{agent.publicKey.substring(0, 6)}...{agent.publicKey.substring(agent.publicKey.length - 6)}</span>
-                        </div>
-                        <div>
-                          Hot-Key: <span className="text-zinc-200">{agent.signer.substring(0, 6)}...{agent.signer.substring(agent.signer.length - 6)}</span>
-                        </div>
-                        <div>
-                          Limit/Call: <span className="text-white font-bold">${agent.maxPerCall.toFixed(2)} USDC</span>
-                        </div>
-                        <div>
-                          Limit/Minute: <span className="text-white font-bold">${agent.maxPerMinute.toFixed(2)} USDC</span>
-                        </div>
-                      </div>
-
-                      {/* Deposit funding inline widget */}
-                      {activeTab === agent.id && (
-                        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-glass-border">
-                          <input
-                            value={depositAmount}
-                            onChange={(e) => setDepositAmount(e.target.value)}
-                            type="text"
-                            className="bg-white/5 border border-glass-border px-3 py-1.5 rounded text-xs text-white font-mono max-w-[80px] focus:outline-none"
-                          />
-                          <span className="text-xs font-mono text-zinc-500">USDC</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeposit();
-                            }}
-                            disabled={actionLoading}
-                            className="text-xs px-4 py-1.5 rounded bg-success-emerald hover:bg-success-emerald/90 text-white font-bold transition-all ml-auto"
-                          >
-                            Fund Vault
-                          </button>
-                        </div>
-                      )}
-
-                    </div>
+                      agent={agent}
+                      isActive={activeTab === agent.id}
+                      onSelect={() => setActiveTab(agent.id)}
+                      onTogglePause={() => togglePause(agent)}
+                      depositAmount={depositAmount}
+                      setDepositAmount={setDepositAmount}
+                      onDeposit={handleDeposit}
+                      actionLoading={actionLoading}
+                    />
                   ))}
                 </div>
               )}
@@ -628,138 +477,32 @@ export default function DashboardSimulator() {
       <div className="lg:col-span-5 flex flex-col gap-6">
         
         {/* Faucet/Signer Details */}
-        <div className="glass-panel p-5 rounded-xl flex flex-col gap-3 font-mono text-xs">
-          <h4 className="font-bold text-white flex items-center gap-2">
-            <span>🛡️</span> LOCAL SIMULATOR HOT-KEY
-          </h4>
-          <div className="p-3 rounded bg-white/5 border border-glass-border flex flex-col gap-1.5">
-            <span className="text-zinc-400">Public Key:</span>
-            <span className="text-vivid-cyan text-[11px] break-all select-all">
-              {simulatedSigner ? simulatedSigner.publicKey.toBase58() : "Loading..."}
-            </span>
-          </div>
-        </div>
+        <SimulatorHotkeyCard 
+          pubKey={simulatedSigner ? simulatedSigner.publicKey.toBase58() : ""} 
+        />
 
         {/* Spend triggers */}
-        <div className="glass-panel p-5 rounded-xl flex flex-col gap-4">
-          <h4 className="font-bold text-white font-mono text-sm">TEST SPENDING POLICY GUARDS</h4>
-          
-          <div className="flex items-center gap-3">
-            <input
-              value={spendAmount}
-              onChange={(e) => setSpendAmount(e.target.value)}
-              type="text"
-              className="bg-white/5 border border-glass-border px-3 py-2 rounded text-sm text-white font-mono max-w-[80px] focus:outline-none"
-            />
-            <span className="text-xs font-mono text-zinc-400">USDC</span>
-          </div>
-
-          <div className="flex flex-col gap-2 mt-2">
-            <button
-              onClick={() => handleSpend("normal")}
-              disabled={actionLoading || !connected}
-              className="py-2 px-3 rounded bg-zinc-800 hover:bg-zinc-700 font-mono text-xs text-left text-zinc-200 border border-glass-border transition-all flex justify-between"
-            >
-              <span>✅ Normal Spend Request</span>
-              <span className="text-zinc-500">Under Limits</span>
-            </button>
-            <button
-              onClick={() => handleSpend("exploit-cap")}
-              disabled={actionLoading || !connected}
-              className="py-2 px-3 rounded bg-emergency-red/10 hover:bg-emergency-red/20 font-mono text-xs text-left text-emergency-red border border-emergency-red/20 transition-all flex justify-between"
-            >
-              <span>🚨 Bypass Max Single-Call Cap</span>
-              <span className="text-emergency-red/60">Should Revert</span>
-            </button>
-            <button
-              onClick={() => handleSpend("exploit-rate")}
-              disabled={actionLoading || !connected}
-              className="py-2 px-3 rounded bg-emergency-red/10 hover:bg-emergency-red/20 font-mono text-xs text-left text-emergency-red border border-emergency-red/20 transition-all flex justify-between"
-            >
-              <span>🚨 Hammer Rate Limit (Spike)</span>
-              <span className="text-emergency-red/60">Should Revert</span>
-            </button>
-            <button
-              onClick={() => handleSpend("exploit-allowlist")}
-              disabled={actionLoading || !connected}
-              className="py-2 px-3 rounded bg-emergency-red/10 hover:bg-emergency-red/20 font-mono text-xs text-left text-emergency-red border border-emergency-red/20 transition-all flex justify-between"
-            >
-              <span>🚨 Spend to Unregistered Provider</span>
-              <span className="text-emergency-red/60">Should Revert</span>
-            </button>
-          </div>
-        </div>
+        <SpendingPolicyTestCard
+          spendAmount={spendAmount}
+          setSpendAmount={setSpendAmount}
+          onSpend={handleSpend}
+          actionLoading={actionLoading}
+          connected={connected}
+        />
 
         {/* Real-time scrollable Terminal logger */}
-        <div className="glass-panel rounded-xl flex flex-col overflow-hidden h-[300px]">
-          <div className="bg-white/5 border-b border-glass-border px-4 py-2 flex justify-between items-center">
-            <span className="font-mono text-xs font-bold text-zinc-300">Agent Script Console</span>
-            <div className="flex gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emergency-red" />
-              <span className="w-2 h-2 rounded-full bg-vivid-cyan" />
-              <span className="w-2 h-2 rounded-full bg-success-emerald animate-pulse" />
-            </div>
-          </div>
-          
-          <div 
-            ref={terminalContainerRef}
-            className="flex-1 overflow-y-auto p-4 flex flex-col gap-2.5 font-mono text-[11px] leading-relaxed bg-[#050508]"
-          >
-            {terminalLogs.map((log, idx) => (
-              <div key={idx} className="flex gap-2">
-                <span className="text-zinc-600 select-none">[{log.timestamp}]</span>
-                <span
-                  className={
-                    log.type === "success"
-                      ? "text-success-emerald font-semibold"
-                      : log.type === "error"
-                      ? "text-emergency-red font-semibold"
-                      : log.type === "warning"
-                      ? "text-amber-500 font-semibold"
-                      : "text-vivid-cyan"
-                  }
-                >
-                  {log.message}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <AgentTerminal logs={terminalLogs} />
 
       </div>
 
       {/* Floating Error Dialog Overlay Card */}
       {errorPopup && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-          <div className="glass-panel max-w-md w-full p-6 rounded-2xl border border-emergency-red/30 shadow-2xl relative overflow-hidden flex flex-col gap-4">
-            <div className="absolute top-0 left-0 w-full h-1 bg-emergency-red" />
-            
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emergency-red/10 border border-emergency-red/20 flex items-center justify-center text-emergency-red font-mono text-xl font-bold">
-                ⚠️
-              </div>
-              <div className="flex flex-col">
-                <h3 className="font-bold text-white font-mono">{errorPopup.title}</h3>
-                {errorPopup.code && (
-                  <span className="text-[10px] font-mono text-emergency-red/80 uppercase tracking-wider">
-                    {errorPopup.code}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <p className="text-sm text-zinc-300 font-mono leading-relaxed bg-white/5 p-4 rounded border border-glass-border">
-              {errorPopup.message}
-            </p>
-
-            <button
-              onClick={() => setErrorPopup(null)}
-              className="py-2.5 rounded bg-zinc-800 hover:bg-zinc-700 text-white font-bold font-mono text-xs border border-glass-border transition-all mt-2 select-none"
-            >
-              Acknowledge & Close
-            </button>
-          </div>
-        </div>
+        <ErrorModalOverlay
+          title={errorPopup.title}
+          message={errorPopup.message}
+          code={errorPopup.code}
+          onClose={() => setErrorPopup(null)}
+        />
       )}
 
     </div>

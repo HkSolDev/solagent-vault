@@ -13,3 +13,4 @@
 [2026-05-28--13-27-53 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:54044.
 [2026-05-28--13-27-53 ERROR surfpool::cli::simnet] Transaction simulation failed: Error processing Instruction 0: custom program error: 0x1775
 [2026-05-28--13-27-53 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:54047.
+[2026-05-28--14-19-18 ERROR surfpool::cli::simnet] Transaction simulation failed: Error processing Instruction 0: custom program error: 0x0

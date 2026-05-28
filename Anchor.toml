@@ -7,6 +7,9 @@ skip-lint = false
 [programs.localnet]
 solagent_vault = "C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o"
 
+[programs.devnet]
+solagent_vault = "C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o"
+
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"

@@ -51,6 +51,19 @@ export default function DashboardSimulator() {
   const [currentStep, setCurrentStep] = useState("");
   const [stepPercent, setStepPercent] = useState(0);
 
+  // Error Card Popup state
+  const [errorPopup, setErrorPopup] = useState<{ title: string; message: string; code?: string } | null>(null);
+
+  // Auto-increment new agent ID input based on existing on-chain agents
+  useEffect(() => {
+    if (agents && agents.length > 0) {
+      const maxId = Math.max(...agents.map((a) => a.id), 0);
+      setAgentIdInput((maxId + 1).toString());
+    } else {
+      setAgentIdInput("1");
+    }
+  }, [agents]);
+
   // Auto scroll terminal container only (fixes window scrolling bug!)
   useEffect(() => {
     const container = terminalContainerRef.current;
@@ -116,6 +129,42 @@ export default function DashboardSimulator() {
     ]);
   };
 
+  const triggerErrorPopup = (title: string, err: any) => {
+    let msg = err.message || err.toString();
+    let code = "On-Chain Error";
+    
+    // Map Anchor custom errors to user-friendly messages
+    if (msg.includes("6000") || msg.includes("0x1770") || msg.includes("Overflow")) {
+      msg = "Calculation overflowed inside the smart contract arithmetic checks.";
+      code = "6000 (Overflow)";
+    } else if (msg.includes("6001") || msg.includes("0x1771") || msg.includes("AgentNotActive") || msg.includes("PAUSED")) {
+      msg = "This Agent has been PAUSED by the Vault Admin. On-chain spends are fully frozen.";
+      code = "6001 (AgentPaused)";
+    } else if (msg.includes("6002") || msg.includes("0x1772") || msg.includes("ProviderNotAllowed")) {
+      msg = "The target wallet address is not registered on the Agent's allowed provider list.";
+      code = "6002 (ProviderNotAllowed)";
+    } else if (msg.includes("6003") || msg.includes("0x1773") || msg.includes("ExceedsMaxPerCall")) {
+      msg = "The transaction size exceeds the single-call spending cap configured for this agent.";
+      code = "6003 (ExceedsMaxPerCall)";
+    } else if (msg.includes("6004") || msg.includes("0x1774") || msg.includes("ExceedsRateLimit")) {
+      msg = "Rate limit breached! This agent has exceeded its configured per-minute USDC limits.";
+      code = "6004 (ExceedsRateLimit)";
+    } else if (msg.includes("custom program error: 0x0") || msg.includes("already in use")) {
+      msg = "The Agent ID already exists or the PDA account has already been registered on-chain!";
+      code = "0x0 (AccountAlreadyExists)";
+    } else if (msg.includes("User rejected the request")) {
+      msg = "Transaction cancelled: You rejected the signature request in your browser wallet.";
+      code = "SignatureRejected";
+    }
+
+    setErrorPopup({
+      title,
+      message: msg,
+      code,
+    });
+  };
+
+
   // Setup on-chain program PDA derivation helpers
   const getVaultPda = (owner: PublicKey) => {
     return PublicKey.findProgramAddressSync(
@@ -178,6 +227,7 @@ export default function DashboardSimulator() {
       addLog("success", "Vault State PDA successfully initialized on-chain! 🎉");
     } catch (err: any) {
       addLog("error", `Failed to initialize vault: ${err.message || err}`);
+      triggerErrorPopup("Vault Initialization Failed", err);
     } finally {
       setActionLoading(false);
     }
@@ -230,6 +280,7 @@ export default function DashboardSimulator() {
     } catch (err: any) {
       console.error(err);
       addLog("error", `Spawn Failed: ${err.message || err}`);
+      triggerErrorPopup("Agent Spawn Failed", err);
     } finally {
       setActionLoading(false);
     }
@@ -277,6 +328,7 @@ export default function DashboardSimulator() {
       await reload();
     } catch (err: any) {
       addLog("error", `Configuration Toggle Failed: ${err.message || err}`);
+      triggerErrorPopup("Override Toggle Failed", err);
     } finally {
       setActionLoading(false);
     }
@@ -315,14 +367,18 @@ export default function DashboardSimulator() {
     setTimeout(() => {
       if (activeAgent.status === "Paused") {
         addLog("error", `[ON-CHAIN REVERT] Transaction Blocked! Reason: AgentStatus is PAUSED (ErrorCode: 6001). 🛑`);
+        triggerErrorPopup("Transaction Reverted", new Error("AgentStatus is PAUSED (ErrorCode: 6001)"));
       } else if (mode === "exploit-cap") {
         addLog("error", `[ON-CHAIN REVERT] Transaction Blocked! Reason: Amount $${amount.toFixed(2)} exceeds MaxPerCall cap of $${activeAgent.maxPerCall.toFixed(2)} (ErrorCode: 6003). 🛑`);
+        triggerErrorPopup("Transaction Reverted", new Error(`ExceedsMaxPerCall (ErrorCode: 6003)`));
       } else if (mode === "exploit-allowlist" && activeAgent.allowedProviders.length > 0) {
         addLog("error", `[ON-CHAIN REVERT] Transaction Blocked! Target wallet not on allowlist (ErrorCode: 6002). 🛑`);
+        triggerErrorPopup("Transaction Reverted", new Error(`ProviderNotAllowed (ErrorCode: 6002)`));
       } else if (mode === "exploit-rate") {
         addLog("success", `Tx #1: Spent $${amount.toFixed(2)} USDC successfully. ✅`);
         addLog("success", `Tx #2: Spent $${amount.toFixed(2)} USDC successfully. ✅`);
         addLog("error", `[ON-CHAIN REVERT] Tx #3 Blocked! Exceeds Rolling Per-Minute Limit of $${activeAgent.maxPerMinute.toFixed(2)} (ErrorCode: 6004). 🛑`);
+        triggerErrorPopup("Transaction Reverted", new Error(`ExceedsRateLimit (ErrorCode: 6004)`));
       } else {
         addLog("success", `Transaction Successful! Spent $${amount.toFixed(2)} USDC. TxHash: 5Hk1p...9aK (On-chain verified). ✅`);
       }
@@ -671,6 +727,40 @@ export default function DashboardSimulator() {
         </div>
 
       </div>
+
+      {/* Floating Error Dialog Overlay Card */}
+      {errorPopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="glass-panel max-w-md w-full p-6 rounded-2xl border border-emergency-red/30 shadow-2xl relative overflow-hidden flex flex-col gap-4">
+            <div className="absolute top-0 left-0 w-full h-1 bg-emergency-red" />
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emergency-red/10 border border-emergency-red/20 flex items-center justify-center text-emergency-red font-mono text-xl font-bold">
+                ⚠️
+              </div>
+              <div className="flex flex-col">
+                <h3 className="font-bold text-white font-mono">{errorPopup.title}</h3>
+                {errorPopup.code && (
+                  <span className="text-[10px] font-mono text-emergency-red/80 uppercase tracking-wider">
+                    {errorPopup.code}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <p className="text-sm text-zinc-300 font-mono leading-relaxed bg-white/5 p-4 rounded border border-glass-border">
+              {errorPopup.message}
+            </p>
+
+            <button
+              onClick={() => setErrorPopup(null)}
+              className="py-2.5 rounded bg-zinc-800 hover:bg-zinc-700 text-white font-bold font-mono text-xs border border-glass-border transition-all mt-2 select-none"
+            >
+              Acknowledge & Close
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

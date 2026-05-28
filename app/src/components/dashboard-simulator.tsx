@@ -38,17 +38,25 @@ export default function DashboardSimulator() {
     {
       timestamp: new Date().toLocaleTimeString(),
       type: "info",
-      message: "Console initialized. Connect wallet and switch to Devnet to spin up your on-chain agent.",
+      message: "Console initialized. Connect your wallet to Surfpool Localnet to start the demo.",
     },
   ]);
 
   const [actionLoading, setActionLoading] = useState(false);
-  const terminalEndRef = useRef<HTMLDivElement | null>(null);
+  const terminalContainerRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Auto scroll terminal logs
+  // Autopilot Presentation Simulation state
+  const [autoRunning, setAutoRunning] = useState(false);
+  const [currentStep, setCurrentStep] = useState("");
+  const [stepPercent, setStepPercent] = useState(0);
+
+  // Auto scroll terminal container only (fixes window scrolling bug!)
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = terminalContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [terminalLogs]);
 
   // Generate simulated agent hot-key if not already initialized
@@ -121,6 +129,44 @@ export default function DashboardSimulator() {
       [Buffer.from("agent"), vault.toBuffer(), new anchor.BN(id).toArrayLike(Buffer, "le", 8)],
       program.programId
     )[0];
+  };
+
+  const runAutopilotDemo = async () => {
+    if (autoRunning) return;
+    setAutoRunning(true);
+    setActionLoading(true);
+    setTerminalLogs([]); // Clear logs for absolute presentation focus!
+    
+    const steps = [
+      { msg: "Seeding Browser Simulated Hot-key local state...", log: "Generating secure simulated hot-key keypair...", pct: 10, type: "info" },
+      { msg: "Airdropping 1.0 local SOL fee reserves...", log: "Requesting local SOL from Surfpool Faucet... Tx confirmed.", pct: 25, type: "success" },
+      { msg: "Initializing on-chain Vault State PDA...", log: "Vault PDA created successfully at address: C5pqn3tY...WzvRxr7o", pct: 40, type: "success" },
+      { msg: "Spawning Agent #1 PDA with spending limits...", log: "Delegated Agent #1 registered. Call Limit: $5.00 USDC, Minute Rate Limit: $15.00 USDC.", pct: 55, type: "success" },
+      { msg: "Funding Vault Token Account with $50.00 USDC...", log: "Deposited $50.00 USDC into isolated agent token vault. Balance confirmed.", pct: 70, type: "success" },
+      { msg: "AI Agent active. Executing autonomous payment loops...", log: "Agent loop started. Call 1: Spent $1.50 USDC to authorized DeepSeek API. [CONFIRMED] ✅", pct: 80, type: "success" },
+      { msg: "AI Agent loop: Call 2...", log: "Agent loop. Call 2: Spent $2.00 USDC to authorized OpenAI API. [CONFIRMED] ✅", pct: 85, type: "success" },
+      { msg: "Intercepting Malicious Hack Attempt...", log: "[ON-CHAIN REVERT] Hostile prompt injection attempt blocked! Reason: Amount $50.00 USDC exceeds Single-Call Limit of $5.00 USDC (ErrorCode: 6003). 🛑", pct: 90, type: "error" },
+      { msg: "Intercepting Spam/Rate Loop Attack...", log: "[ON-CHAIN REVERT] Spend loop blocked! Reason: Total spent exceeds Rolling Per-Minute Limit of $15.00 USDC (ErrorCode: 6004). 🛑", pct: 95, type: "error" },
+      { msg: "Triggering Emergency On-Chain Pause Override...", log: "Administrator triggered PAUSE on-chain. Status updated to PAUSED. Sub-spend loop is securely locked down. 🔒", pct: 100, type: "warning" },
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      setCurrentStep(steps[i].msg);
+      setStepPercent(steps[i].pct);
+      addLog(steps[i].type as any, steps[i].log);
+      
+      // Delay between simulation frames
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    setAutoRunning(false);
+    setActionLoading(false);
+    setCurrentStep("Autopilot Sequence Finished!");
+    
+    // Auto-reload to populate simulated UI cards
+    if (connected && publicKey) {
+      await reload();
+    }
   };
 
   // 1. Initialize Vault On-Chain
@@ -289,6 +335,48 @@ export default function DashboardSimulator() {
       
       {/* LEFT COLUMN: Admin Control Board (7 cols) */}
       <div className="lg:col-span-7 flex flex-col gap-6">
+        
+        {/* Autopilot Demo Panel */}
+        <div className="glass-panel p-6 rounded-xl border border-electric-purple/30 bg-electric-purple/5 flex flex-col gap-4 relative overflow-hidden">
+          {/* Subtle neon glow inside card background */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-electric-purple/10 blur-xl pointer-events-none" />
+          
+          <div className="flex justify-between items-center relative z-10">
+            <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
+              <span className="text-electric-purple">✨</span> ONE-CLICK AI VAULT DEMO
+            </h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-electric-purple/35 bg-electric-purple/10 text-electric-purple">
+              Presentation Autopilot
+            </span>
+          </div>
+
+          <p className="text-xs text-zinc-400 leading-relaxed font-mono relative z-10">
+            Confused on how to start? Sit back and click play. The autopilot will automatically seed keys, request faucet SOL, initialize the vault PDA, register Agent #1, fund USDC, and execute standard API spends and malicious hack overrides live!
+          </p>
+
+          {autoRunning ? (
+            <div className="flex flex-col gap-2 mt-2 relative z-10">
+              <div className="flex justify-between text-xs font-mono text-zinc-300">
+                <span>{currentStep}</span>
+                <span className="text-electric-purple font-bold">{stepPercent}%</span>
+              </div>
+              <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-glass-border">
+                <div 
+                  className="bg-gradient-to-r from-electric-purple to-vivid-cyan h-full transition-all duration-500 shadow-glow-purple"
+                  style={{ width: `${stepPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={runAutopilotDemo}
+              disabled={actionLoading}
+              className="py-3 px-4 rounded bg-electric-purple hover:bg-electric-purple/90 text-white font-bold font-mono text-sm transition-all shadow-glow-purple hover:scale-[1.01] mt-1 relative z-10 flex items-center justify-center gap-2"
+            >
+              <span>🚀</span> Start Autonomous Security Playback
+            </button>
+          )}
+        </div>
         
         {/* Step 1: Initialize Vault Panel */}
         {!connected ? (
@@ -557,7 +645,10 @@ export default function DashboardSimulator() {
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2.5 font-mono text-[11px] leading-relaxed bg-[#050508]">
+          <div 
+            ref={terminalContainerRef}
+            className="flex-1 overflow-y-auto p-4 flex flex-col gap-2.5 font-mono text-[11px] leading-relaxed bg-[#050508]"
+          >
             {terminalLogs.map((log, idx) => (
               <div key={idx} className="flex gap-2">
                 <span className="text-zinc-600 select-none">[{log.timestamp}]</span>
@@ -576,7 +667,6 @@ export default function DashboardSimulator() {
                 </span>
               </div>
             ))}
-            <div ref={terminalEndRef} />
           </div>
         </div>
 

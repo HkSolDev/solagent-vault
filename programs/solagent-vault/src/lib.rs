@@ -6,7 +6,7 @@ pub mod instructions;
 
 use instructions::*;
 
-declare_id!("AvzxLJP5TatmG2kxs43Yc5uTEFesVfcqWXc5yddv5TK8");
+declare_id!("C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o");
 
 #[program]
 pub mod solagent_vault {

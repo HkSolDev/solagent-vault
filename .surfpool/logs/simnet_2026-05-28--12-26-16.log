@@ -1,0 +1,40 @@
+[2026-05-28--12-26-16 INFO actix_server::builder] starting 5 workers
+[2026-05-28--12-26-16 INFO actix_server::server] Tokio runtime found; starting in existing Tokio runtime
+[2026-05-28--12-26-16 INFO actix_server::server] starting service: "actix-web-service-127.0.0.1:18488", workers: 5, listening on: 127.0.0.1:18488
+[2026-05-28--12-26-16 INFO parity_ws] Listening for new connections on 127.0.0.1:8900.
+[2026-05-28--12-26-18 INFO surfpool::cli::simnet] Datasource connection successful. Epoch 0 / Slot index 0 / Slot 31.
+[2026-05-28--12-26-18 INFO surfpool::cli::simnet] Account F5FjAAU6y22eUisRo1dzm5L6ENB4XTNMUGxJrYKsUBvY updated.
+[2026-05-28--12-26-18 INFO surfpool::cli::simnet] Genesis airdrop successful F5FjAAU6y22eUisRo1dzm5L6ENB4XTNMUGxJrYKsUBvY: 10000000000000
+[2026-05-28--12-26-32 ERROR surfpool::cli::simnet] Transaction simulation failed: Error processing Instruction 1: invalid account data for instruction
+[2026-05-28--12-30-04 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52764.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-28--12-30-04 ERROR surfpool::cli::simnet] Transaction simulation failed: This program may not be used for executing instructions
+[2026-05-28--12-30-31 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52783.
+[2026-05-28--12-30-32 ERROR surfpool::cli::simnet] Transaction simulation failed: Error processing Instruction 0: custom program error: 0x1773
+[2026-05-28--12-30-32 ERROR surfpool::cli::simnet] Transaction simulation failed: Error processing Instruction 0: custom program error: 0x1773
+[2026-05-28--12-30-32 ERROR surfpool::cli::simnet] Transaction simulation failed: Error processing Instruction 0: custom program error: 0x1771

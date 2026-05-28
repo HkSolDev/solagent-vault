@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-solagent_vault = "AvzxLJP5TatmG2kxs43Yc5uTEFesVfcqWXc5yddv5TK8"
+solagent_vault = "C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o"
 
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "npx tsc && npx mocha dist/tests/**/*.js -t 1000000"
 
 [hooks]

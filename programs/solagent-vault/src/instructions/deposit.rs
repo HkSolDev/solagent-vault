@@ -37,7 +37,7 @@ pub struct Deposit<'info> {
         bump = vault_state.bump,
         has_one = owner
     )]
-    pub vault_state: Account<'info, VaultState>,
+    pub vault_state: Box<Account<'info, VaultState>>,
 
     #[account(
         mut,
@@ -45,7 +45,7 @@ pub struct Deposit<'info> {
         bump = agent_state.bump,
         has_one = owner
     )]
-    pub agent_state: Account<'info, AgentState>,
+    pub agent_state: Box<Account<'info, AgentState>>,
 
     #[account(mut)]
     pub owner: Signer<'info>,

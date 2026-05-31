@@ -11,8 +11,16 @@ import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 export default function SolanaProvider({ children }: { children: React.ReactNode }) {
-  // We target Local Surfpool network for local visual checks
-  const endpoint = "http://127.0.0.1:8899";
+  // Automatically switch between Devnet (online/deployed) and Local Surfpool (localhost)
+  const endpoint = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_RPC_URL) {
+      return process.env.NEXT_PUBLIC_RPC_URL;
+    }
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      return "https://api.devnet.solana.com";
+    }
+    return "http://127.0.0.1:8899";
+  }, []);
 
   // Configure wallets to support Phantom, Solflare, and a burner wallet for simulator flow
   const wallets = useMemo(

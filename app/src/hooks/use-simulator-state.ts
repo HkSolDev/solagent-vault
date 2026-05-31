@@ -43,7 +43,7 @@ export function useSimulatorState() {
   const [solSeedInput, setSolSeedInput] = useState("0.05");
 
   // Interaction inputs
-  const [depositAmount, setDepositAmount] = useState("10.0");
+  const [depositAmount, setDepositAmount] = useState("1000.0");
   const [spendAmount, setSpendAmount] = useState("1.5");
 
   // Multi-LLM solver configurations
@@ -605,7 +605,7 @@ export function useSimulatorState() {
         }
 
         if (needsMint) {
-          const mintAmt = depositValBigInt > 1000_000_000n ? depositValBigInt * 2n : 1000_000_000n;
+          const mintAmt = depositValBigInt > BigInt("1000000000") ? depositValBigInt * BigInt(2) : BigInt("1000000000");
           addLog("info", `🛠️ Minting additional custom tokens to your wallet (${Number(mintAmt) / 1_000_000} SOLAGNT)...`);
           tx.add(
             createMintToInstruction(

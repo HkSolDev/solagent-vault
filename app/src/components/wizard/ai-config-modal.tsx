@@ -113,6 +113,9 @@ export default function AiConfigModal({
                 placeholder={`Enter your ${llmProvider === "gemini" ? "Gemini" : "OpenRouter"} API Key`}
                 className="w-full bg-black/60 border border-glass-border p-2 rounded text-xs text-white focus:outline-none placeholder-zinc-700"
               />
+              <span className="text-[8px] text-zinc-500 mt-1.5 block leading-normal font-sans">
+                ℹ️ Optional: If left blank, the app securely falls back to your <code className="text-vivid-cyan bg-white/5 px-1 rounded">.env</code> keys.
+              </span>
             </div>
           )}
 

@@ -71,14 +71,14 @@ export default function PerformanceTelemetry({
         <div className="p-3.5 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-2">
           <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold">Fleet Token Throughput</span>
           
-          <div className="flex justify-between items-baseline mt-1 font-mono">
+          <div className="flex justify-between items-center mt-1 font-mono">
             <div className="flex flex-col">
               <span className="text-[8px] text-zinc-500 uppercase">Vault Reserves</span>
-              <span className="text-sm font-bold text-white">${totalDeposited.toFixed(2)} SOLAGNT</span>
+              <span className="text-sm font-bold text-white">${totalDeposited.toFixed(2)}</span>
             </div>
             <div className="flex flex-col text-right">
-              <span className="text-[8px] text-zinc-500 uppercase">Swept Spends</span>
-              <span className="text-sm font-bold text-vivid-cyan">{totalSpends} Clearances</span>
+              <span className="text-[8px] text-zinc-500 uppercase">Clearances</span>
+              <span className="text-sm font-bold text-vivid-cyan">{totalSpends}</span>
             </div>
           </div>
 

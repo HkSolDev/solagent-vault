@@ -276,8 +276,59 @@ export function useSimulatorState() {
           setDataFeeds(JSON.parse(savedFeeds));
         } catch (e) {}
       }
+
+      const savedTelemetry = localStorage.getItem("solagent_cognitive_telemetry");
+      if (savedTelemetry) {
+        try {
+          setCognitiveTelemetry(JSON.parse(savedTelemetry));
+        } catch (e) {}
+      } else {
+        const initialTelemetry = {
+          1: {
+            latency: 1420,
+            promptTokens: 412,
+            completionTokens: 124,
+            systemInstruction: "You are an autonomous AI DeFi analysis agent registered on the Solana network. Your goal is to request price feed quotes and predict market movements.",
+            userPrompt: "Analyze the current SOL/USDC market trends and execute the premium predictions route data decryption from Raydium CLMM optimal liquidity paths.",
+            modelOutput: JSON.stringify({
+              tool: "spend",
+              arguments: {
+                amount: 125000,
+                agentId: 1,
+                providerWallet: "HN7cABujF476pA3b8eDF78fGkLaQ56u9qRzYvK6pWmxB"
+              }
+            }, null, 2),
+            modelName: "gemini-1.5-flash"
+          },
+          2: {
+            latency: 1850,
+            promptTokens: 532,
+            completionTokens: 145,
+            systemInstruction: "You are an autonomous secure multi-signature auditor agent. Your task is to verify thresholds and request validation validation logs.",
+            userPrompt: "Audit the multisig threshold and request validation proof validation checks from the program registry provider paywall.",
+            modelOutput: JSON.stringify({
+              tool: "spend",
+              arguments: {
+                amount: 250000,
+                agentId: 2,
+                providerWallet: "HN7cABujF476pA3b8eDF78fGkLaQ56u9qRzYvK6pWmxB"
+              }
+            }, null, 2),
+            modelName: "mock-cognitive-v2"
+          }
+        };
+        setCognitiveTelemetry(initialTelemetry);
+        localStorage.setItem("solagent_cognitive_telemetry", JSON.stringify(initialTelemetry));
+      }
     }
   }, []);
+
+  // Auto-persist telemetry to localStorage
+  useEffect(() => {
+    if (Object.keys(cognitiveTelemetry).length > 0) {
+      localStorage.setItem("solagent_cognitive_telemetry", JSON.stringify(cognitiveTelemetry));
+    }
+  }, [cognitiveTelemetry]);
 
   // Determine active step based on progress to guide the user sequentially
   useEffect(() => {
@@ -1025,8 +1076,17 @@ export function useSimulatorState() {
       return;
     }
 
-    if (llmProvider !== "mock" && !apiKey && llmProvider !== "ollama") {
-      triggerErrorPopup("API Key Missing", "Please enter your API Key in the Advanced Config dropdown.");
+    let activeKey = apiKey.trim();
+    if (!activeKey) {
+      if (llmProvider === "gemini") {
+        activeKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+      } else if (llmProvider === "openrouter") {
+        activeKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
+      }
+    }
+
+    if (llmProvider !== "mock" && !activeKey && llmProvider !== "ollama") {
+      triggerErrorPopup("API Key Missing", "Please enter your API Key in the Advanced Config dropdown or set it in your environment (.env).");
       return;
     }
 
@@ -1075,26 +1135,55 @@ ${JSON.stringify(mockChallenge, null, 2)}
 
     try {
       if (llmProvider === "gemini") {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemInstruction }, { text: userPrompt }] }],
-            generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
-          }),
-        });
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: systemInstruction }, { text: userPrompt }] }],
+              generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+            }),
+          });
 
-        if (!res.ok) throw new Error(`Gemini API returned error: ${res.status}`);
-        const data = await res.json();
-        toolCallText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (!res.ok) throw new Error(`Gemini API returned error: ${res.status}`);
+          const data = await res.json();
+          toolCallText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        } catch (geminiErr: any) {
+          addLog("warning", `⚠️ Gemini API call failed (${geminiErr.message || geminiErr}). Attempting automatic failover to OpenRouter...`);
+          
+          const openRouterKey = localStorage.getItem("solagent_openrouter_api_key") || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || activeKey;
+          const targetModel = modelName.trim() || "google/gemini-2.5-flash";
+          
+          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${openRouterKey.trim()}`,
+              "HTTP-Referer": window.location.origin,
+            },
+            body: JSON.stringify({
+              model: targetModel,
+              messages: [
+                { role: "system", content: systemInstruction },
+                { role: "user", content: userPrompt },
+              ],
+              temperature: 0.1,
+            }),
+          });
+
+          if (!res.ok) throw new Error(`OpenRouter failover failed with status: ${res.status}`);
+          const data = await res.json();
+          toolCallText = data.choices?.[0]?.message?.content || "";
+          addLog("success", `✅ OpenRouter failover succeeded using model: ${targetModel}`);
+        }
       } else if (llmProvider === "openrouter") {
         const targetModel = modelName.trim() || "xiaomi/mimo-v2.5";
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey.trim()}`,
+            Authorization: `Bearer ${activeKey}`,
             "HTTP-Referer": window.location.origin,
           },
           body: JSON.stringify({

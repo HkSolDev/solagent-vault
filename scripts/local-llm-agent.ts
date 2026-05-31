@@ -17,11 +17,24 @@ async function runLocalAgent() {
   console.log("🤖 SOLAGENT VAULT: LIVE LOCAL OLLAMA (QWEN2.5) AGENT RUNNER");
   console.log("==================================================================\n");
 
-  // 1. Setup local Solana connection
-  const provider = anchor.AnchorProvider.env();
+  // 1. Setup local Solana Connection safely (with automatic fallbacks)
+  let provider: anchor.AnchorProvider;
+  if (!process.env.ANCHOR_PROVIDER_URL) {
+    const connection = new anchor.web3.Connection("http://127.0.0.1:8899", "confirmed");
+    let wallet: anchor.Wallet;
+    try {
+      wallet = anchor.Wallet.local();
+    } catch {
+      const fallbackKeypair = anchor.web3.Keypair.generate();
+      wallet = new anchor.Wallet(fallbackKeypair);
+    }
+    provider = new anchor.AnchorProvider(connection, wallet, { commitment: "confirmed" });
+  } else {
+    provider = anchor.AnchorProvider.env();
+  }
   anchor.setProvider(provider);
 
-  // Load Program directly via the target IDL
+  // Load Program directly via the target IDL to prevent anchor workspace workspace injection errors
   const idlPath = path.join(__dirname, "../target/idl/solagent_vault.json");
   const idl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
   const program = new Program(idl, provider) as unknown as Program<SolagentVault>;

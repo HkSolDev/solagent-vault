@@ -9,7 +9,8 @@
   "main": "index.js",
   "scripts": {
     "test": "anchor test",
-    "simulate": "ts-node scripts/simulate-agent.ts"
+    "simulate": "ts-node scripts/simulate-agent.ts",
+    "agent": "ts-node scripts/local-llm-agent.ts"
   },
   "dependencies": {
     "@anchor-lang/core": "^1.0.2",

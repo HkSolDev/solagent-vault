@@ -35,10 +35,10 @@ export default function PerformanceTelemetry({
       <div className="flex items-center justify-between pb-3 border-b border-glass-border/30">
         <div>
           <h4 className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-            <span className="text-success-emerald animate-pulse">📊</span> FLEET TELEMETRY & LIVE PERFORMANCE GAUGES
+            <span className="text-success-emerald animate-pulse">📈</span> SYSTEM ACTIVITY & STATS
           </h4>
           <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
-            Dynamic diagnostics tracking token velocity, overall system throughput, and audit metrics.
+            Live tracking of agent activity, vault reserves, and transaction success rates.
           </p>
         </div>
       </div>
@@ -46,8 +46,8 @@ export default function PerformanceTelemetry({
       {/* Gauges rows */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Spend Velocity Gauge */}
-        <div className="p-3.5 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-1.5 text-center relative overflow-hidden">
-          <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold text-left block">Spend Velocity</span>
+        <div className="p-4 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-1.5 text-center relative overflow-hidden">
+          <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold text-left block">⚡ Spending Speed</span>
           <div className="flex items-center justify-center py-2">
             <div className="relative w-24 h-12 flex items-end justify-center overflow-hidden">
               {/* Semi-circle visual gauge */}
@@ -64,25 +64,25 @@ export default function PerformanceTelemetry({
               </span>
             </div>
           </div>
-          <span className="text-[8px] font-mono text-zinc-400">Spends per minute (last 5m)</span>
+          <span className="text-[8px] font-mono text-zinc-400">Requests per minute (last 5m)</span>
         </div>
 
         {/* Fleet Token Throughput */}
-        <div className="p-3.5 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-2">
-          <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold">Fleet Token Throughput</span>
+        <div className="p-4 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col justify-between gap-3">
+          <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold">💰 Funds & Transactions</span>
           
-          <div className="flex justify-between items-center mt-1 font-mono">
-            <div className="flex flex-col">
-              <span className="text-[8px] text-zinc-500 uppercase">Vault Reserves</span>
+          <div className="grid grid-cols-2 gap-4 mt-1 font-mono">
+            <div className="flex flex-col gap-1">
+              <span className="text-[8px] text-zinc-500 uppercase tracking-wider font-semibold">Safe Balance</span>
               <span className="text-sm font-bold text-white">${totalDeposited.toFixed(2)}</span>
             </div>
-            <div className="flex flex-col text-right">
-              <span className="text-[8px] text-zinc-500 uppercase">Clearances</span>
+            <div className="flex flex-col gap-1 text-right">
+              <span className="text-[8px] text-zinc-500 uppercase tracking-wider font-semibold">Payments Made</span>
               <span className="text-sm font-bold text-vivid-cyan">{totalSpends}</span>
             </div>
           </div>
 
-          <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-1.5">
+          <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-1">
             <div
               className="h-full bg-gradient-to-r from-success-emerald to-emerald-600 rounded-full"
               style={{ width: `${Math.min((totalDeposited / 100) * 100, 100)}%` }}
@@ -91,8 +91,8 @@ export default function PerformanceTelemetry({
         </div>
 
         {/* Success Clearance Gauge */}
-        <div className="p-3.5 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-1.5 text-center relative overflow-hidden">
-          <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold text-left block">Clearance Success</span>
+        <div className="p-4 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-1.5 text-center relative overflow-hidden">
+          <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold text-left block">✅ Approved Transactions</span>
           <div className="flex items-center justify-center py-2">
             <div className="relative w-16 h-16 rounded-full flex items-center justify-center bg-black/45 border-4 border-zinc-800">
               {/* Radial success circle */}
@@ -105,17 +105,17 @@ export default function PerformanceTelemetry({
               </span>
             </div>
           </div>
-          <span className="text-[8px] font-mono text-zinc-400">On-Chain Clearance Ratio</span>
+          <span className="text-[8px] font-mono text-zinc-400">Approved vs Blocked Ratio</span>
         </div>
       </div>
 
       {/* Transaction explorer link drawer */}
       <div className="flex flex-col gap-2 mt-2">
-        <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold tracking-wider">Transaction signature History explorer</span>
+        <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold tracking-wider">Transaction History Log</span>
         
         {txHistory.length === 0 ? (
           <div className="p-4 bg-black/30 border border-glass-border/20 rounded text-center font-mono text-[10px] text-zinc-500">
-            📡 Awaiting on-chain activity to populate transaction registry.
+            📡 Awaiting transactions to show in history.
           </div>
         ) : (
           <div className="w-full max-h-[110px] overflow-y-auto bg-black/30 border border-glass-border/20 rounded font-mono text-[10px] scrollbar-thin">
@@ -125,7 +125,7 @@ export default function PerformanceTelemetry({
                   <th className="p-2">Operation</th>
                   <th className="p-2">Target</th>
                   <th className="p-2">Time</th>
-                  <th className="p-2 text-right">Solana Explorer Link</th>
+                  <th className="p-2 text-right">View Transaction</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +133,7 @@ export default function PerformanceTelemetry({
                   <tr key={idx} className="border-b border-glass-border/10 hover:bg-white/[0.01]">
                     <td className="p-2 font-bold text-white">{tx.type}</td>
                     <td className="p-2 text-zinc-400">
-                      {tx.id !== undefined ? `Agent #${tx.id}` : "Global System"}
+                      {tx.id !== undefined ? `Agent #${tx.id}` : "Global Safe"}
                     </td>
                     <td className="p-2 text-zinc-500">
                       {new Date(tx.timestamp).toLocaleTimeString()}
@@ -145,7 +145,7 @@ export default function PerformanceTelemetry({
                         rel="noreferrer"
                         className="text-vivid-cyan hover:underline font-bold"
                       >
-                        [🔍 View On-Chain]
+                        [🔍 Solana Explorer]
                       </a>
                     </td>
                   </tr>

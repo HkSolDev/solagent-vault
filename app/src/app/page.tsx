@@ -43,6 +43,9 @@ export default function Home() {
             <a href="https://github.com/HkSolDev/solagent-vault" target="_blank" rel="noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
               <span>💻</span> GitHub Code
             </a>
+            <a href="https://x.com/HKsoldev" target="_blank" rel="noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
+              <span>🐦</span> Twitter / X
+            </a>
           </nav>
 
           <div>

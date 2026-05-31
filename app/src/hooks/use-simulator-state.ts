@@ -791,16 +791,16 @@ export function useSimulatorState() {
   const handleCloseAllAgents = async () => {
     if (!publicKey) return;
     if (agents.length === 0) {
-      addLog("warning", "No active agents available to decommission.");
+      addLog("warning", "No active agents found to delete.");
       return;
     }
 
     setActionLoading(true);
-    addLog("info", `Initiating batch decommissioning of all ${agents.length} agents...`);
+    addLog("info", `Deleting all ${agents.length} agents...`);
 
     try {
       for (const agent of agents) {
-        addLog("info", `Decommissioning Agent #${agent.id} PDA...`);
+        addLog("info", `Deleting Agent #${agent.id} PDA...`);
         const vaultPda = getVaultPda(publicKey);
         const agentPda = getAgentPda(vaultPda, agent.id);
         const usdcMintKey = new PublicKey(usdcMintInput.trim());
@@ -834,19 +834,19 @@ export function useSimulatorState() {
               tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
-          addLog("success", `Agent #${agent.id} PDA successfully closed!`);
+          addLog("success", `Agent #${agent.id} successfully closed!`);
         } catch (err) {
-          console.warn(`On-chain close for Agent #${agent.id} rejected, simulating de-registration...`, err);
-          addLog("warning", `⚠️ Close rejected on-chain for Agent #${agent.id}. Simulating de-registration...`);
+          console.warn(`On-chain close for Agent #${agent.id} rejected, simulating removal...`, err);
+          addLog("warning", `⚠️ Close rejected on-chain for Agent #${agent.id}. Simulating removal...`);
           await new Promise((resolve) => setTimeout(resolve, 300));
-          addLog("success", `Successfully simulated de-registration of Agent #${agent.id}!`);
+          addLog("success", `Successfully simulated removal of Agent #${agent.id}!`);
         }
       }
-      addLog("success", "🎉 All agents successfully decommissioned! PDA rent refunded.");
+      addLog("success", "🎉 All agents successfully deleted! Rent funds returned.");
       await reload();
     } catch (err: any) {
       console.error(err);
-      addLog("error", `Batch decommissioning failed: ${err.message || err}`);
+      addLog("error", `Batch deletion failed: ${err.message || err}`);
     } finally {
       setActionLoading(false);
     }

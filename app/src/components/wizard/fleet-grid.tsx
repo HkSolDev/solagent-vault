@@ -43,10 +43,10 @@ export default function FleetGrid({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-glass-border/30">
         <div>
           <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-            <span className="text-vivid-cyan">🛰️</span> MULTI-AGENT FLEET CONTROLLER
+            <span className="text-vivid-cyan">🛰️</span> SIMPLE AGENT CONTROL CENTER
           </h3>
           <p className="text-[11px] text-zinc-400 font-mono mt-1">
-            Spawn isolated delegated agent PDAs, fund them directly, and trigger sequential batch AI solvers.
+            Create secure wallets for your agents, add funds, and run them all at once.
           </p>
         </div>
 
@@ -60,7 +60,7 @@ export default function FleetGrid({
             disabled={actionLoading || agents.length === 0}
             className="text-[10px] font-mono font-bold px-3.5 py-1.5 rounded bg-gradient-to-r from-electric-purple to-purple-600 hover:opacity-90 text-white cursor-pointer shadow-glow-purple disabled:opacity-50 flex items-center gap-1"
           >
-            <span>⚡</span> Run All Solvers
+            <span>⚡</span> Start All
           </button>
 
           <button
@@ -68,7 +68,7 @@ export default function FleetGrid({
             disabled={actionLoading || activeCount === 0}
             className="text-[10px] font-mono font-bold px-3.5 py-1.5 rounded bg-emergency-red/10 hover:bg-emergency-red/20 text-emergency-red border border-emergency-red/20 cursor-pointer disabled:opacity-50 flex items-center gap-1"
           >
-            <span>🔒</span> Fleet Freeze
+            <span>🔒</span> Freeze All
           </button>
 
           <button
@@ -76,7 +76,7 @@ export default function FleetGrid({
             disabled={actionLoading || agents.length === 0}
             className="text-[10px] font-mono font-bold px-3.5 py-1.5 rounded bg-emergency-red/20 hover:bg-emergency-red/30 text-white border border-emergency-red cursor-pointer disabled:opacity-50 flex items-center gap-1"
           >
-            <span>🗑️</span> Decommission All
+            <span>🗑️</span> Delete All
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function FleetGrid({
       {/* Grid wrapper */}
       {agents.length === 0 ? (
         <div className="p-10 text-center rounded border border-dashed border-glass-border/50 text-zinc-500 font-mono text-xs">
-          📡 No active delegated Agent PDAs detected. Spawn a new agent in Step 2 above!
+          📡 No agents created yet. Spawn an agent in Step 2 above!
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -150,7 +150,7 @@ export default function FleetGrid({
                     disabled={actionLoading || agent.status !== "Active" || agent.balance <= 0}
                     className="py-1.5 rounded bg-electric-purple/15 hover:bg-electric-purple/25 text-electric-purple border border-electric-purple/35 font-bold font-mono text-[9px] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1 transition-all"
                   >
-                    <span>🤖</span> Run Solver
+                    <span>▶️</span> Start Agent
                   </button>
 
                   <button
@@ -176,7 +176,7 @@ export default function FleetGrid({
                     disabled={actionLoading || agent.balance <= 0}
                     className="py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-glass-border font-bold font-mono text-[9px] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
-                    💸 Drain Vault
+                    💸 Withdraw
                   </button>
 
                   <button
@@ -187,7 +187,7 @@ export default function FleetGrid({
                     disabled={actionLoading}
                     className="py-1.5 rounded bg-emergency-red/10 hover:bg-emergency-red/20 text-emergency-red border border-emergency-red/25 font-bold font-mono text-[9px] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
-                    ❌ De-register
+                    ❌ Delete
                   </button>
                 </div>
 

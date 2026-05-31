@@ -14,7 +14,7 @@ import * as path from "path";
 // Connects your Solana program directly to a local offline LLM!
 async function runLocalAgent() {
   console.log("==================================================================");
-  console.log("🤖 SOLAGENT VAULT: LIVE LOCAL OLLAMA (QWEN2.5) AGENT RUNNER");
+  console.log("🤖 SOLAGENT VAULT: LIVE LOCAL OLLAMA (QWEN3/LOCAL) AGENT RUNNER");
   console.log("==================================================================\n");
 
   // 1. Setup local Solana Connection safely (with automatic fallbacks)
@@ -57,8 +57,8 @@ async function runLocalAgent() {
   console.log("📥 Simulating HTTP 402 Paywall Challenge received by Agent...");
   console.log(JSON.stringify(mock402Challenge, null, 2));
 
-  // 4. Construct the prompt for Ollama Qwen2.5
-  console.log("\n🧠 Querying local Ollama (qwen2.5:3b) on port 11434...");
+  // 4. Construct the prompt for Ollama Qwen3
+  console.log("\n🧠 Querying local Ollama (qwen3:14b) on port 11434...");
   
   const systemPrompt = `
 You are an autonomous AI Agent equipped with a sandboxed Solana USDC Vault.
@@ -90,7 +90,7 @@ Please execute the spending instruction to resolve the paywall.
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen3:4b",
+        model: "qwen3:14b",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }

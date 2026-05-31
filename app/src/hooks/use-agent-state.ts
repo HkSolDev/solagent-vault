@@ -64,9 +64,9 @@ export function useAgentState() {
       }
 
       if (vaultAccount) {
-        // Query registered agent state accounts (we fetch up to 3 for the demo playground)
+        // Query registered agent state accounts (we fetch up to 10 for the fleet sandbox dashboard)
         const loadedAgents: OnChainAgent[] = [];
-        for (let i = 1; i <= 3; i++) {
+        for (let i = 1; i <= 10; i++) {
           const agentPda = getAgentPda(vaultPda, i);
           try {
             const agentAcc: any = await (program.account as any).agentState.fetch(agentPda);

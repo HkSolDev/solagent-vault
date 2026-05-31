@@ -1,0 +1,47 @@
+[2026-05-31--15-22-42 INFO actix_server::builder] starting 5 workers
+[2026-05-31--15-22-42 INFO actix_server::server] Tokio runtime found; starting in existing Tokio runtime
+[2026-05-31--15-22-42 INFO actix_server::server] starting service: "actix-web-service-127.0.0.1:18488", workers: 5, listening on: 127.0.0.1:18488
+[2026-05-31--15-22-45 INFO parity_ws] Listening for new connections on 127.0.0.1:8900.
+[2026-05-31--15-22-49 INFO txtx::svm::deploy_program] [Recovery Instructions] - An ephemeral authority account will be created and funded to write to the buffer account.
+[2026-05-31--15-22-49 INFO txtx::svm::deploy_program] [Recovery Instructions] - Please save the following information in case the deployment fails and the account needs to be recovered:
+[2026-05-31--15-22-49 INFO txtx::svm::deploy_program] [Recovery Instructions] - Ephemeral authority public key: 8ybSYRdAYJxCfHxWiWdX16JHLtvyXibs6ejjnzipZ1vK
+[2026-05-31--15-22-49 INFO txtx::svm::deploy_program] [Recovery Instructions] - Ephemeral authority secret key: [239, 23, 7, 147, 92, 243, 101, 254, 146, 33, 69, 138, 55, 40, 91, 44, 62, 186, 190, 138, 242, 114, 207, 106, 16, 159, 246, 193, 98, 112, 238, 69, 118, 129, 70, 144, 253, 32, 39, 189, 158, 217, 249, 247, 41, 82, 231, 114, 86, 33, 85, 186, 95, 209, 21, 103, 142, 193, 45, 124, 123, 153, 180, 100]
+[2026-05-31--15-22-50 INFO txtx::svm::deploy_program] Account Created - Ephemeral authority account created and funded to write to buffer
+[2026-05-31--15-22-50 INFO txtx::svm::deploy_program] [Recovery Instructions] - Creating program buffer account at pubkey FnFN9dcQBmDRWom9WtGoigFU6UGMdhXLdoGpHNhyGrvU
+[2026-05-31--15-22-50 INFO txtx::svm::deploy_program] Account Created - Program buffer account created
+[2026-05-31--15-22-54 INFO txtx::svm::deploy_program] Buffer Ready - Writing to buffer account is complete
+[2026-05-31--15-22-55 INFO txtx::svm::deploy_program] Program Created - Program C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o has been deployed
+[2026-05-31--15-22-57 INFO txtx::svm::deploy_program] Complete - Ephemeral authority account closed and leftover funds returned to payer
+[2026-05-31--15-23-37 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52988.
+[2026-05-31--15-23-38 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52989.
+[2026-05-31--15-23-39 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52993.
+[2026-05-31--15-23-40 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52997.
+[2026-05-31--15-23-40 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52998.
+[2026-05-31--15-23-41 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:52999.
+[2026-05-31--15-23-42 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53001.
+[2026-05-31--15-23-43 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53002.
+[2026-05-31--15-23-44 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53003.
+[2026-05-31--15-23-44 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53004.
+[2026-05-31--15-25-41 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53030.
+[2026-05-31--15-25-42 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53033.
+[2026-05-31--15-25-43 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53034.
+[2026-05-31--15-25-44 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53035.
+[2026-05-31--15-25-45 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53036.
+[2026-05-31--15-26-29 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53043.
+[2026-05-31--15-26-30 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53044.
+[2026-05-31--15-26-31 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53045.
+[2026-05-31--15-26-32 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53046.
+[2026-05-31--15-26-33 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53047.
+[2026-05-31--15-26-33 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53049.
+[2026-05-31--15-32-23 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53354.
+[2026-05-31--15-32-24 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53355.
+[2026-05-31--15-32-24 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53356.
+[2026-05-31--15-32-25 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53357.
+[2026-05-31--15-32-26 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53358.
+[2026-05-31--15-32-26 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:53360.
+[2026-05-31--15-33-55 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--15-33-55 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--15-33-55 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--15-33-55 INFO actix_server::accept] accept thread stopped
+[2026-05-31--15-33-55 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--15-33-55 INFO actix_server::worker] shutting down idle worker

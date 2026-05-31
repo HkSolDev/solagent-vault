@@ -1,15 +1,29 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import FaucetPanel from "@/components/faucet-panel";
 import DashboardSimulator from "@/components/dashboard-simulator";
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
+  const [network, setNetwork] = useState<"devnet" | "localnet">("devnet");
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solagent_network");
+      if (saved === "localnet") {
+        setNetwork("localnet");
+      } else {
+        setNetwork("devnet");
+      }
+    }
   }, []);
+
+  const handleNetworkToggle = () => {
+    const nextNetwork = network === "devnet" ? "localnet" : "devnet";
+    localStorage.setItem("solagent_network", nextNetwork);
+    window.location.reload();
+  };
 
   if (!mounted) {
     return (
@@ -42,10 +56,23 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-[10px] font-mono px-3 py-1.5 rounded-full border border-glass-border bg-black/40 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-vivid-cyan animate-ping" />
-              RPC: <span className="text-vivid-cyan font-bold">Surfpool Active</span>
-            </span>
+            {/* Interactive Network Switcher Dropdown */}
+            <button
+              onClick={handleNetworkToggle}
+              title="Click to toggle between Devnet and Localnet"
+              className="text-[10px] font-mono px-3 py-1.5 rounded-full border border-glass-border bg-black/40 hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer text-zinc-300"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
+                network === "devnet" ? "bg-success-emerald" : "bg-vivid-cyan"
+              }`} />
+              RPC: <span className={
+                network === "devnet" ? "text-success-emerald font-bold" : "text-vivid-cyan font-bold"
+              }>
+                {network === "devnet" ? "Solana Devnet" : "Surfpool Localnet"}
+              </span>
+              <span className="text-[8px] text-zinc-500 font-bold ml-1 uppercase">(Toggle)</span>
+            </button>
+            
             <a 
               href="/"
               className="text-xs font-mono px-4 py-1.5 rounded-md border border-glass-border bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors"
@@ -70,7 +97,7 @@ export default function DashboardPage() {
             
             <div className="flex gap-2">
               <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-[#0a0a14] border border-glass-border text-zinc-400">
-                Network: <span className="text-electric-purple font-bold">Localnet</span>
+                Network: <span className="text-electric-purple font-bold uppercase">{network}</span>
               </span>
               <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-[#0a0a14] border border-glass-border text-zinc-400">
                 Program: <span className="text-zinc-300 font-bold select-all">C5pq...xr7o</span>
@@ -78,12 +105,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Interactive balance faucet utility */}
-          <div className="w-full">
-            <FaucetPanel />
-          </div>
-
-          {/* Main dashboard rules controller simulator */}
+          {/* Main dashboard rules controller simulator containing the 5-Step Wizard & Live Diagnostics */}
           <div className="w-full">
             <DashboardSimulator />
           </div>

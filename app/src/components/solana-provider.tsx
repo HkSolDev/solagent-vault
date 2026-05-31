@@ -2,33 +2,30 @@
 
 import React, { useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import { UnsafeBurnerWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { clusterApiUrl } from "@solana/web3.js";
 
-// Import standard wallet adapter UI styles
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 export default function SolanaProvider({ children }: { children: React.ReactNode }) {
-  // Automatically switch between Devnet (online/deployed) and Local Surfpool (localhost)
+  // Read active cluster from localStorage with automatic Devnet default for online validation
   const endpoint = useMemo(() => {
-    if (process.env.NEXT_PUBLIC_RPC_URL) {
-      return process.env.NEXT_PUBLIC_RPC_URL;
-    }
-    if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    if (typeof window !== "undefined") {
+      if (process.env.NEXT_PUBLIC_RPC_URL) {
+        return process.env.NEXT_PUBLIC_RPC_URL;
+      }
+      
+      const savedNetwork = localStorage.getItem("solagent_network");
+      if (savedNetwork === "localnet") {
+        return "http://127.0.0.1:8899"; // Local Surfpool Validator
+      }
+      
+      // Default to live Devnet so that it works online immediately out of the box
       return "https://api.devnet.solana.com";
     }
-    return "http://127.0.0.1:8899";
+    return "https://api.devnet.solana.com";
   }, []);
 
-  // Configure wallets to support Phantom, Solflare, and a burner wallet for simulator flow
-  const wallets = useMemo(
-    () => [
-      new UnsafeBurnerWalletAdapter(),
-    ],
-    []
-  );
+  const wallets = useMemo(() => [], []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

@@ -1,0 +1,91 @@
+[2026-05-31--15-35-54 INFO actix_server::builder] starting 5 workers
+[2026-05-31--15-35-54 INFO actix_server::server] Tokio runtime found; starting in existing Tokio runtime
+[2026-05-31--15-35-54 INFO actix_server::server] starting service: "actix-web-service-127.0.0.1:18488", workers: 5, listening on: 127.0.0.1:18488
+[2026-05-31--15-35-55 INFO parity_ws] Listening for new connections on 127.0.0.1:8900.
+[2026-05-31--15-35-59 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-31--15-35-59 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-31--15-35-59 INFO txtx::svm::deploy_program] [Recovery Instructions] - An ephemeral authority account will be created and funded to write to the buffer account.
+[2026-05-31--15-35-59 INFO txtx::svm::deploy_program] [Recovery Instructions] - Please save the following information in case the deployment fails and the account needs to be recovered:
+[2026-05-31--15-35-59 INFO txtx::svm::deploy_program] [Recovery Instructions] - Ephemeral authority public key: 3gswkpJxJTKzTzp4mUXro2Pmq3URW9oAdPKYj1sZSYnX
+[2026-05-31--15-35-59 INFO txtx::svm::deploy_program] [Recovery Instructions] - Ephemeral authority secret key: [177, 172, 165, 141, 67, 19, 245, 8, 143, 135, 142, 43, 236, 134, 151, 55, 158, 178, 169, 162, 241, 73, 91, 146, 221, 87, 16, 125, 101, 18, 183, 36, 39, 238, 160, 199, 28, 86, 161, 161, 74, 60, 145, 96, 11, 109, 182, 233, 189, 57, 62, 190, 236, 253, 117, 212, 170, 241, 198, 210, 136, 24, 190, 212]
+[2026-05-31--15-36-00 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:55320.
+[2026-05-31--15-36-00 INFO txtx::svm::deploy_program] Account Created - Ephemeral authority account created and funded to write to buffer
+[2026-05-31--15-36-00 INFO txtx::svm::deploy_program] [Recovery Instructions] - Creating program buffer account at pubkey BaDKBFz2czum9dEuot8EHqM5WP5GdGV9Ks4DjwWDzDfA
+[2026-05-31--15-36-00 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:55324.
+[2026-05-31--15-36-00 INFO txtx::svm::deploy_program] Account Created - Program buffer account created
+[2026-05-31--15-36-02 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-31--15-36-04 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-31--15-36-05 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-31--15-36-05 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:55882.
+[2026-05-31--15-36-06 ERROR litesvm] Program account C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o is not executable.
+[2026-05-31--15-36-08 INFO txtx::svm::deploy_program] Buffer Ready - Writing to buffer account is complete
+[2026-05-31--15-36-11 INFO txtx::svm::deploy_program] Program Created - Program C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o has been deployed
+[2026-05-31--15-36-12 INFO txtx::svm::deploy_program] Complete - Ephemeral authority account closed and leftover funds returned to payer
+[2026-05-31--15-36-55 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56290.
+[2026-05-31--15-37-18 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56302.
+[2026-05-31--15-37-26 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56306.
+[2026-05-31--15-41-01 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56573.
+[2026-05-31--15-41-02 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56574.
+[2026-05-31--15-41-03 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56576.
+[2026-05-31--15-41-03 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56577.
+[2026-05-31--15-41-04 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56578.
+[2026-05-31--15-41-05 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56579.
+[2026-05-31--15-41-06 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56580.
+[2026-05-31--15-41-06 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56581.
+[2026-05-31--15-41-07 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56582.
+[2026-05-31--15-41-08 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56583.
+[2026-05-31--15-41-27 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56597.
+[2026-05-31--15-41-28 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56598.
+[2026-05-31--15-41-28 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56599.
+[2026-05-31--15-41-31 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56600.
+[2026-05-31--15-41-31 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56601.
+[2026-05-31--15-41-32 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:56603.
+[2026-05-31--15-56-03 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:58195.
+[2026-05-31--16-08-40 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:58930.
+[2026-05-31--16-38-17 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:59771.
+[2026-05-31--16-38-18 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:59773.
+[2026-05-31--16-38-19 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:59774.
+[2026-05-31--16-38-19 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:59775.
+[2026-05-31--16-38-20 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:59776.
+[2026-05-31--16-39-57 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:59853.
+[2026-05-31--16-47-36 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:60041.
+[2026-05-31--17-16-31 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:60942.
+[2026-05-31--17-18-02 INFO actix_web::middleware::logger] 127.0.0.1 "GET / HTTP/1.1" 200 4246 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.012070
+[2026-05-31--17-18-02 INFO actix_web::middleware::logger] 127.0.0.1 "GET /assets/surfpool.svg HTTP/1.1" 200 6281 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.001090
+[2026-05-31--17-18-02 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/css/19bb784c1cefdfc2.css HTTP/1.1" 200 30857 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.003718
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/webpack-e37202015d0d9f3f.js HTTP/1.1" 200 2052 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.000785
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/main-app-ad1b03e85ab82542.js HTTP/1.1" 200 218 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.000442
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/08b39ec4-b928729c1809cb2c.js HTTP/1.1" 200 2705 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.001514
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/bd665b6f-2941c3c4f32e45db.js HTTP/1.1" 200 14466 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.005255
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/584-b7d7a9d72e28e190.js HTTP/1.1" 200 44656 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.010003
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/c3a130cb-ffd94e80d9b15343.js HTTP/1.1" 200 55354 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.011884
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/902-d8cf51bcbca2941e.js HTTP/1.1" 200 7800 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.003447
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/799-37adf7241e9c36ad.js HTTP/1.1" 200 15533 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.010359
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/549-84c398751b872630.js HTTP/1.1" 200 13356 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.008012
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/640-5f759a740f277df5.js HTTP/1.1" 200 70880 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.014971
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/19-b86d0ad63e64c27b.js HTTP/1.1" 200 9836 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.003704
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/927-04096b78076c3529.js HTTP/1.1" 200 100765 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.018724
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/7921136a-06d98fc0899b4af0.js HTTP/1.1" 200 3806 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.001307
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/app/layout-3ffd378fd204294f.js HTTP/1.1" 200 2410 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.004848
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/144-218b87336e97ebb0.js HTTP/1.1" 200 37551 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.009514
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/424-59a847b8273bf0a2.js HTTP/1.1" 200 15297 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.003336
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/app/page-b0aceaf88fd55b2e.js HTTP/1.1" 200 10913 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.002993
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/293-5765eed6cb361cdb.js HTTP/1.1" 200 125695 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.019377
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/00766880-b81a0e4ed3991dd6.js HTTP/1.1" 200 324243 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.035002
+[2026-05-31--17-18-03 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:61009.
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /config HTTP/1.1" 200 165 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.000669
+[2026-05-31--17-18-03 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:61010.
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /config HTTP/1.1" 200 165 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.000134
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /scenarios.txt?_rsc=3lb4g HTTP/1.1" 200 1686 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.000301
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/04c1a432-42d04618904adbe6.js HTTP/1.1" 200 2705 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.000500
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/230-6d6459501752ad3f.js HTTP/1.1" 200 10402 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.001297
+[2026-05-31--17-18-03 INFO actix_web::middleware::logger] 127.0.0.1 "GET /_next/static/chunks/app/scenarios/page-c2e83e6d658964f5.js HTTP/1.1" 200 15979 "http://127.0.0.1:18488/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" 0.001657
+[2026-05-31--17-19-28 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:61076.
+[2026-05-31--18-17-06 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:62334.
+[2026-05-31--18-17-14 INFO parity_ws::io] Accepted a new tcp connection from 127.0.0.1:62343.
+[2026-05-31--18-25-40 INFO actix_server::accept] accept thread stopped
+[2026-05-31--18-25-40 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--18-25-40 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--18-25-40 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--18-25-40 INFO actix_server::worker] shutting down idle worker
+[2026-05-31--18-25-40 INFO actix_server::worker] shutting down idle worker

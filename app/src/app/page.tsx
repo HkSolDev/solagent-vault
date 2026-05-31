@@ -29,7 +29,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col items-center px-6 py-8 relative z-10">
         
         {/* Navigation Header */}
-        <header className="w-full max-w-6xl flex justify-between items-center mb-16 py-4 px-6 rounded-full glass-panel border-white/5 bg-white/[0.02]">
+        <header className="sticky top-4 z-50 w-full max-w-6xl flex justify-between items-center mb-16 py-4 px-6 rounded-full glass-panel border-white/5 bg-white/[0.02] backdrop-blur-md shadow-lg shadow-black/10 transition-all duration-300">
           <div className="flex items-center gap-2">
             <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-electric-purple to-vivid-cyan animate-pulse" />
             <span className="font-mono font-bold tracking-widest text-lg bg-gradient-to-r from-electric-purple to-vivid-cyan bg-clip-text text-transparent">
@@ -41,10 +41,10 @@ export default function Home() {
             <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
             <a href="#guardrails" className="hover:text-white transition-colors">Safety Rules</a>
             <a href="https://github.com/HkSolDev/solagent-vault" target="_blank" rel="noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
-              <span>💻</span> GitHub Code
+              GitHub Code
             </a>
             <a href="https://x.com/HKsoldev" target="_blank" rel="noreferrer" className="hover:text-white transition-colors flex items-center gap-1">
-              <span>🐦</span> Twitter / X
+              Twitter / X
             </a>
           </nav>
 
@@ -53,7 +53,7 @@ export default function Home() {
               href="/dashboard"
               className="text-xs font-mono px-4 py-2 rounded-full bg-electric-purple hover:bg-electric-purple/90 text-white font-bold transition-all shadow-glow-purple flex items-center gap-1.5 cursor-pointer"
             >
-              <span>🚀</span> Launch Console
+              Launch Console
             </Link>
           </div>
         </header>
@@ -86,13 +86,13 @@ export default function Home() {
               href="/dashboard"
               className="px-8 py-3.5 rounded-lg font-mono text-sm font-semibold bg-gradient-to-r from-electric-purple to-purple-600 hover:from-electric-purple/95 hover:to-purple-600/95 text-white transition-all hover:scale-[1.01] shadow-lg shadow-electric-purple/25 flex items-center gap-2 cursor-pointer"
             >
-              <span>⚡</span> Go to Developer Console
+              Go to Developer Console
             </Link>
             <a 
               href="#how-it-works" 
               className="px-8 py-3.5 rounded-lg font-mono text-sm font-semibold border border-glass-border bg-glass-card hover:bg-white/5 transition-all text-zinc-300 flex items-center gap-2 cursor-pointer"
             >
-              <span>📖</span> See How it Works
+              See How it Works
             </a>
           </div>
 
@@ -154,7 +154,7 @@ export default function Home() {
               
               {/* Feature 1 */}
               <div className="glass-panel p-8 rounded-2xl text-left flex flex-col gap-4">
-                <div className="w-11 h-11 rounded-xl bg-electric-purple/10 border border-electric-purple/15 flex items-center justify-center text-lg shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-electric-purple/10 border border-electric-purple/15 flex items-center justify-center text-lg shadow-sm font-semibold font-mono text-electric-purple">
                   ⏱️
                 </div>
                 <h3 className="text-lg font-bold text-white font-mono tracking-tight">Minute Budget Limits</h3>
@@ -165,7 +165,7 @@ export default function Home() {
 
               {/* Feature 2 */}
               <div className="glass-panel p-8 rounded-2xl text-left flex flex-col gap-4">
-                <div className="w-11 h-11 rounded-xl bg-vivid-cyan/10 border border-vivid-cyan/15 flex items-center justify-center text-lg shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-vivid-cyan/10 border border-vivid-cyan/15 flex items-center justify-center text-lg shadow-sm font-semibold font-mono text-vivid-cyan">
                   🎯
                 </div>
                 <h3 className="text-lg font-bold text-white font-mono tracking-tight">Allowed Destination List</h3>
@@ -176,7 +176,7 @@ export default function Home() {
 
               {/* Feature 3 */}
               <div className="glass-panel p-8 rounded-2xl text-left flex flex-col gap-4">
-                <div className="w-11 h-11 rounded-xl bg-emergency-red/10 border border-emergency-red/15 flex items-center justify-center text-lg shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-emergency-red/10 border border-emergency-red/15 flex items-center justify-center text-lg shadow-sm font-semibold font-mono text-emergency-red">
                   🛑
                 </div>
                 <h3 className="text-lg font-bold text-white font-mono tracking-tight">Tap-To-Freeze Override</h3>
@@ -210,7 +210,7 @@ export default function Home() {
                   rel="noreferrer" 
                   className="px-6 py-2.5 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white font-mono text-xs font-semibold text-center transition-all cursor-pointer"
                 >
-                  View GitHub Repository 💻
+                  View GitHub Repository
                 </a>
               </div>
             </div>
@@ -227,15 +227,18 @@ export default function Home() {
               href="/dashboard"
               className="px-8 py-3 rounded bg-electric-purple hover:bg-electric-purple/90 text-white font-mono text-sm font-semibold transition-all shadow-glow-purple cursor-pointer mt-2"
             >
-              Open Sandbox Console →
+              Open Sandbox Console
             </Link>
           </div>
 
         </main>
 
         {/* Footer */}
-        <footer className="w-full max-w-6xl text-center text-[10px] text-zinc-500 font-mono mt-16 pt-8 border-t border-glass-border">
-          SolAgent Vault • 100% On-Chain Security Guards for Autonomous AI Workers.
+        <footer className="w-full max-w-6xl text-center text-[10px] text-zinc-500 font-mono mt-16 pt-8 border-t border-glass-border flex flex-col md:flex-row justify-between items-center gap-4">
+          <span>SolAgent Vault • 100% On-Chain Security Guards for Autonomous AI Workers.</span>
+          <a href="https://x.com/HKsoldev" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-white transition-colors">
+            Built by @HKsoldev
+          </a>
         </footer>
 
       </div>

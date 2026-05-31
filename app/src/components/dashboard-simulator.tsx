@@ -69,6 +69,7 @@ export default function DashboardSimulator() {
     txHistory,
     cognitiveTelemetry,
     dataFeeds,
+    agentSolverStates,
     claimAirdrop,
     handleInitVault,
     handleCreateAgent,
@@ -256,6 +257,7 @@ export default function DashboardSimulator() {
                 agents={agents}
                 activeAgentId={activeTab}
                 solverState={solverState}
+                agentSolverStates={agentSolverStates}
                 onSelectAgent={setActiveTab}
               />
               

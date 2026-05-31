@@ -57,6 +57,13 @@ export function useSimulatorState() {
 
   // Live Solver execution status states
   const [solverState, setSolverState] = useState<"idle" | "fetching" | "querying" | "signing" | "done" | "error">("idle");
+  const [agentSolverStates, setAgentSolverStates] = useState<Record<number, "idle" | "fetching" | "querying" | "signing" | "done" | "error">>({});
+  
+  const updateSolverState = useCallback((agentId: number, state: "idle" | "fetching" | "querying" | "signing" | "done" | "error") => {
+    setSolverState(state);
+    setAgentSolverStates(prev => ({ ...prev, [agentId]: state }));
+  }, []);
+
   const [solverErrorMsg, setSolverErrorMsg] = useState("");
   const [confirmedTxSignature, setConfirmedTxSignature] = useState("");
 
@@ -964,7 +971,7 @@ export function useSimulatorState() {
       return;
     }
 
-    setSolverState("fetching");
+    updateSolverState(id, "fetching");
     setSolverErrorMsg("");
     setConfirmedTxSignature("");
     addLog("info", `🤖 [Agent #${id}] Capturing Live AI Autopilot challenge...`);
@@ -1001,7 +1008,7 @@ Analyze and solve this paywall to continue execution:
 ${JSON.stringify(mockChallenge, null, 2)}
 `;
 
-    setSolverState("querying");
+    updateSolverState(id, "querying");
     addLog("info", `🧠 Querying ${llmProvider.toUpperCase()} cognitive model...`);
 
     let toolCallText = "";
@@ -1107,7 +1114,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
         const amountBN = new anchor.BN(args.amount);
         const agentIdBN = new anchor.BN(args.agentId);
 
-        setSolverState("signing");
+        updateSolverState(id, "signing");
         addLog("info", `⚙️ [Agent #${id}] Dispatching on-chain spend instruction...`);
 
         try {
@@ -1252,12 +1259,12 @@ ${JSON.stringify(mockChallenge, null, 2)}
           // Log premium data feed
           logDataFeed(id, selectedPayload);
 
-          setSolverState("done");
+          updateSolverState(id, "done");
           await reload();
 
           // Auto-reset solver state to idle after 4 seconds so that SVG bubble sweeps stop
           setTimeout(() => {
-            setSolverState("idle");
+            updateSolverState(id, "idle");
           }, 4000);
         } catch (txErr: any) {
           const errMsg = txErr.message || "";
@@ -1278,7 +1285,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
           ) {
             addLog("error", "🛑 [ON-CHAIN REVERT] Spend failed: The Agent's Vault Token Account has Insufficient Funds! Please fund the agent first.");
             triggerErrorPopup("Agent Vault: Insufficient Token Balance", new Error("The Agent Vault Token Account does not have enough custom SOLAGNT tokens to cover the paywall request. Please fund this agent in the fleet controller grid."));
-            setSolverState("error");
+            updateSolverState(id, "error");
             setSolverErrorMsg("Agent Vault has Insufficient Token Balance to complete this payment.");
             return;
           }
@@ -1306,7 +1313,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
             // This is a legitimate smart contract revert! Report it correctly!
             addLog("error", `🛑 [ON-CHAIN REVERT] Spend instruction blocked by security policy: ${errMsg || txErr.toString()}`);
             triggerErrorPopup("Spending Policy Blocked Transaction", txErr);
-            setSolverState("error");
+            updateSolverState(id, "error");
             setSolverErrorMsg(errMsg || txErr.toString());
           } else {
             console.warn("ATA accounts missing on-chain. Simulating confirm standard...", txErr);
@@ -1320,11 +1327,11 @@ ${JSON.stringify(mockChallenge, null, 2)}
             const selectedPayload = generatePremiumJSON(id);
             logDataFeed(id, selectedPayload);
 
-            setSolverState("done");
+            updateSolverState(id, "done");
 
             // Auto-reset solver state to idle after 4 seconds so that SVG bubble sweeps stop
             setTimeout(() => {
-              setSolverState("idle");
+              updateSolverState(id, "idle");
             }, 4000);
           }
         }
@@ -1333,7 +1340,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
       }
     } catch (err: any) {
       console.error(err);
-      setSolverState("error");
+      updateSolverState(id, "error");
       setSolverErrorMsg(err.message || err.toString());
       addLog("error", `❌ AI Interception Failed: ${err.message || err.toString()}`);
     }
@@ -1346,7 +1353,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
     await handleLiveAISolve(id);
   };
 
-  // Batch Solver for all active fleet agents
+  // Batch Solver for all active fleet agents in parallel
   const handleBatchRunSolvers = async () => {
     const activeAgents = agents.filter((a) => a.status === "Active" && a.balance > 0);
     if (activeAgents.length === 0) {
@@ -1355,18 +1362,21 @@ ${JSON.stringify(mockChallenge, null, 2)}
     }
 
     setActionLoading(true);
-    addLog("info", "⚡ Firing Batch Fleet Autonomous Solvers loop sequentially...");
+    addLog("info", "⚡ Firing Batch Fleet Autonomous Solvers in parallel concurrently...");
 
-    for (const agent of activeAgents) {
-      addLog("info", `🚀 Sequential Loop: Firing AI Solver specifically for Agent #${agent.id}...`);
-      setActiveTab(agent.id);
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      try {
-        await handleLiveAISolve(agent.id);
-      } catch (e) {
-        addLog("error", `AI Solver loop failed for Agent #${agent.id}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+    try {
+      await Promise.all(
+        activeAgents.map(async (agent) => {
+          addLog("info", `🚀 Parallel Trigger: Launching AI Solver concurrently for Agent #${agent.id}...`);
+          try {
+            await handleLiveAISolve(agent.id);
+          } catch (e) {
+            addLog("error", `❌ Parallel AI Solver failed for Agent #${agent.id}`);
+          }
+        })
+      );
+    } catch (err) {
+      addLog("error", "❌ Batch Parallel Execution error.");
     }
 
     addLog("success", "⚡ Batch Fleet Solvers loop finished successfully! Fleet is active.");
@@ -1498,6 +1508,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
     txHistory,
     cognitiveTelemetry,
     dataFeeds,
+    agentSolverStates,
 
     // Core callback functions
     claimAirdrop,

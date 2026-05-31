@@ -7,6 +7,7 @@ interface FleetTopologyMapProps {
   agents: OnChainAgent[];
   activeAgentId: number;
   solverState: string;
+  agentSolverStates?: Record<number, string>;
   onSelectAgent: (id: number) => void;
 }
 
@@ -14,6 +15,7 @@ export default function FleetTopologyMap({
   agents,
   activeAgentId,
   solverState,
+  agentSolverStates,
   onSelectAgent,
 }: FleetTopologyMapProps) {
   // Center is at (250, 180) - Vault Node
@@ -41,7 +43,7 @@ export default function FleetTopologyMap({
     };
   };
 
-  const isTransferring = solverState === "signing" || solverState === "done";
+  const isTransferring = solverState === "signing" || solverState === "done" || (agentSolverStates && Object.values(agentSolverStates).some(s => s === "signing" || s === "done"));
 
   return (
     <div className="w-full glass-panel p-5 rounded-xl border border-glass-border flex flex-col gap-4 bg-black/45 shadow-2xl relative overflow-hidden">
@@ -100,6 +102,12 @@ export default function FleetTopologyMap({
             {agents.map((agent, i) => {
               const coords = getAgentCoords(i, agents.length);
               const isActive = activeAgentId === agent.id;
+              
+              // Parallel-friendly active check
+              const status = agentSolverStates ? agentSolverStates[agent.id] : (isActive ? solverState : "idle");
+              const isSending = status === "fetching" || status === "querying" || status === "signing";
+              const isLinkActive = isActive || isSending || status === "done" || status === "error";
+
               return (
                 <g key={`link-${agent.id}`}>
                   {/* Glowing background link */}
@@ -108,13 +116,13 @@ export default function FleetTopologyMap({
                     y1={coords.y}
                     x2={cx}
                     y2={cy}
-                    stroke={isActive ? "rgba(147, 51, 234, 0.4)" : "rgba(255, 255, 255, 0.04)"}
-                    strokeWidth={isActive ? 2.5 : 1}
-                    strokeDasharray={isActive ? "none" : "3, 3"}
+                    stroke={isLinkActive ? "rgba(147, 51, 234, 0.4)" : "rgba(255, 255, 255, 0.04)"}
+                    strokeWidth={isLinkActive ? 2.5 : 1}
+                    strokeDasharray={isLinkActive ? "none" : "3, 3"}
                     className="transition-all duration-300"
                   />
                   {/* Flowing animated pulse when executing solver */}
-                  {isActive && isTransferring && (
+                  {isSending && (
                     <circle r="4" fill="#a855f7" filter="url(#glow-purple)">
                       <animateMotion
                         path={`M ${coords.x} ${coords.y} L ${cx} ${cy}`}
@@ -128,43 +136,64 @@ export default function FleetTopologyMap({
             })}
 
             {/* Connecting cable between Vault and Server Agent */}
-            <line
-              x1={cx}
-              y1={cy}
-              x2={mx}
-              y2={my}
-              stroke={isTransferring ? "rgba(6, 182, 212, 0.5)" : "rgba(255, 255, 255, 0.05)"}
-              strokeWidth={isTransferring ? 3 : 1}
-              className="transition-all duration-300"
-            />
-
-            {/* Animated transaction payment pulse towards Server Agent */}
-            {solverState === "signing" && (
-              <circle r="5" fill="#06b6d4" filter="url(#glow-cyan)">
-                <animateMotion
-                  path={`M ${cx} ${cy} L ${mx} ${my}`}
-                  dur="1s"
-                  repeatCount="indefinite"
+            {(() => {
+              const anyActive = agents.some(agent => {
+                const status = agentSolverStates ? agentSolverStates[agent.id] : (activeAgentId === agent.id ? solverState : "idle");
+                return status && status !== "idle" && status !== "error";
+              });
+              
+              return (
+                <line
+                  x1={cx}
+                  y1={cy}
+                  x2={mx}
+                  y2={my}
+                  stroke={anyActive ? "rgba(6, 182, 212, 0.5)" : "rgba(255, 255, 255, 0.05)"}
+                  strokeWidth={anyActive ? 3 : 1}
+                  className="transition-all duration-300"
                 />
-              </circle>
-            )}
+              );
+            })()}
+
+            {/* Animated transaction payment pulses towards Server Agent */}
+            {agents.map((agent) => {
+              const status = agentSolverStates ? agentSolverStates[agent.id] : (activeAgentId === agent.id ? solverState : "idle");
+              if (status === "signing") {
+                return (
+                  <circle key={`pay-${agent.id}`} r="5" fill="#06b6d4" filter="url(#glow-cyan)">
+                    <animateMotion
+                      path={`M ${cx} ${cy} L ${mx} ${my}`}
+                      dur="1s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                );
+              }
+              return null;
+            })}
 
             {/* Animated return premium decrypted data pulse from Server to Vault */}
-            {solverState === "done" && (
-              <circle r="6" fill="#10b981" filter="url(#glow-green)">
-                <animateMotion
-                  path={`M ${mx} ${my} L ${cx} ${cy}`}
-                  dur="1s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-            )}
+            {agents.map((agent) => {
+              const status = agentSolverStates ? agentSolverStates[agent.id] : (activeAgentId === agent.id ? solverState : "idle");
+              if (status === "done") {
+                return (
+                  <circle key={`data-${agent.id}`} r="6" fill="#10b981" filter="url(#glow-green)">
+                    <animateMotion
+                      path={`M ${mx} ${my} L ${cx} ${cy}`}
+                      dur="1s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                );
+              }
+              return null;
+            })}
 
             {/* Orbiting loop animated return data pulses from Vault back to active Agent */}
             {agents.map((agent, i) => {
               const coords = getAgentCoords(i, agents.length);
-              const isActive = activeAgentId === agent.id;
-              if (isActive && solverState === "done") {
+              const status = agentSolverStates ? agentSolverStates[agent.id] : (activeAgentId === agent.id ? solverState : "idle");
+              if (status === "done") {
                 return (
                   <circle key={`return-${agent.id}`} r="5" fill="#10b981" filter="url(#glow-green)">
                     <animateMotion

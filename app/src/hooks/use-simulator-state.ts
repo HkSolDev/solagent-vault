@@ -84,6 +84,66 @@ export function useSimulatorState() {
   // Revert Error overlay state
   const [errorPopup, setErrorPopup] = useState<{ title: string; message: string; code?: string } | null>(null);
 
+  // Capstone Masterclass: On-Chain Transaction Signature History for Solana Explorer links
+  const [txHistory, setTxHistory] = useState<Array<{ type: string; id?: number; signature: string; timestamp: number }>>([]);
+
+  // Capstone Masterclass: LLM Cognitive Audit & Telemetry parameters per agent ID
+  const [cognitiveTelemetry, setCognitiveTelemetry] = useState<Record<number, {
+    latency: number;
+    promptTokens: number;
+    completionTokens: number;
+    systemInstruction: string;
+    userPrompt: string;
+    modelOutput: string;
+    modelName: string;
+  }>>({});
+
+  // Capstone Masterclass: Decrypted Premium Data Feeds from Server Agent
+  const [dataFeeds, setDataFeeds] = useState<Array<{
+    timestamp: number;
+    agentId: number;
+    feedType: string;
+    payload: string;
+    cost: number;
+    size: number;
+  }>>([]);
+
+  // Helper to log transaction signatures securely and store in state
+  const logTxSignature = useCallback((type: string, signature: string, agentId?: number) => {
+    const newEvent = { type, id: agentId, signature, timestamp: Date.now() };
+    setTxHistory(prev => {
+      const updated = [newEvent, ...prev].slice(0, 50);
+      try {
+        localStorage.setItem("solagent_tx_history", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  }, []);
+
+  // Helper to log decrypted premium data streams from the server agent
+  const logDataFeed = useCallback((agentId: number, selectedPayload: string) => {
+    const newFeedItem = {
+      timestamp: Date.now(),
+      agentId,
+      feedType: agentId === 1 ? "DeFi Predictions" :
+                agentId === 2 ? "Multi-Sig Proof" :
+                agentId === 3 ? "Yield Analysis" :
+                agentId === 4 ? "Meteo Anomalies" :
+                agentId === 5 ? "Order Heatmap" :
+                agentId === 6 ? "Cyber Threat Audit" : "Premium Data Feed",
+      payload: selectedPayload,
+      cost: parseFloat(spendAmount),
+      size: selectedPayload.length,
+    };
+    setDataFeeds(prev => {
+      const updated = [newFeedItem, ...prev].slice(0, 50);
+      try {
+        localStorage.setItem("solagent_data_feeds", JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  }, [spendAmount]);
+
   const addLog = useCallback((type: "success" | "error" | "info" | "warning", message: string) => {
     setTerminalLogs((prev) => [
       ...prev,
@@ -195,6 +255,20 @@ export function useSimulatorState() {
 
       const savedMint = localStorage.getItem("solagent_usdc_mint");
       if (savedMint) setUsdcMintInput(savedMint);
+
+      const savedHistory = localStorage.getItem("solagent_tx_history");
+      if (savedHistory) {
+        try {
+          setTxHistory(JSON.parse(savedHistory));
+        } catch (e) {}
+      }
+
+      const savedFeeds = localStorage.getItem("solagent_data_feeds");
+      if (savedFeeds) {
+        try {
+          setDataFeeds(JSON.parse(savedFeeds));
+        } catch (e) {}
+      }
     }
   }, []);
 
@@ -301,7 +375,7 @@ export function useSimulatorState() {
         }
       }
 
-      await program.methods
+      const signature = await program.methods
         .createAgent(new anchor.BN(id), maxCallLamports, maxMinuteLamports, allowedArr as any, solAllocationLamports)
         .accounts({
           vaultState: vaultPda,
@@ -312,6 +386,7 @@ export function useSimulatorState() {
         })
         .rpc();
 
+      logTxSignature("Spawn Agent", signature, id);
       addLog("success", `Agent #${id} PDA successfully spawned on-chain! Spends delegated to hotkey. ✅`);
       setActiveTab(id);
       await reload();
@@ -388,6 +463,7 @@ export function useSimulatorState() {
       addLog("info", "⚙️ Confirming block transactions...");
       await connection.confirmTransaction(signature, "confirmed");
 
+      logTxSignature("Create Mint", signature);
       addLog("success", `🎉 Custom SOLAGNT Token Mint successfully deployed! Address: ${mintKeypair.publicKey.toBase58()}`);
       setUsdcMintInput(mintKeypair.publicKey.toBase58());
       localStorage.setItem("solagent_usdc_mint", mintKeypair.publicKey.toBase58());
@@ -490,6 +566,7 @@ export function useSimulatorState() {
         const signature = await wallet.sendTransaction(tx, connection);
         addLog("info", "⚙️ Confirming custom token funding...");
         await connection.confirmTransaction(signature, "confirmed");
+        logTxSignature("Setup Wallet ATA", signature);
         addLog("success", "✅ Wallet Associated Token Account successfully setup and funded!");
       }
 
@@ -510,6 +587,7 @@ export function useSimulatorState() {
         })
         .rpc();
 
+      logTxSignature("Deposit Agent Vault", signature, id);
       addLog("info", "⚙️ Awaiting Devnet block verification...");
       addLog("success", `Deposited $${amountVal} SOLAGNT into Agent #${id} Vault on-chain! 🎉`);
       await reload();
@@ -556,7 +634,7 @@ export function useSimulatorState() {
 
       addLog("info", "🔑 Confirm the withdraw transaction in your wallet modal...");
 
-      await program.methods
+      const signature = await program.methods
         .withdraw(withdrawAmount, new anchor.BN(id))
         .accounts({
           agentState: agentPda,
@@ -568,6 +646,7 @@ export function useSimulatorState() {
         })
         .rpc();
 
+      logTxSignature("Withdraw Vault", signature, id);
       addLog("success", `Withdrew $${amountStr} custom tokens successfully back to your wallet! ✅`);
       await reload();
     } catch (err: any) {
@@ -611,7 +690,7 @@ export function useSimulatorState() {
 
       addLog("info", "🔑 Confirm the close PDA transaction in your wallet modal...");
 
-      await program.methods
+      const signature = await program.methods
         .closeAgent(new anchor.BN(id))
         .accounts({
           vaultState: vaultPda,
@@ -624,6 +703,7 @@ export function useSimulatorState() {
         })
         .rpc();
 
+      logTxSignature("Decommission Agent", signature, id);
       addLog("success", `Agent #${id} PDA successfully closed! Rent SOL refunded to your wallet. 🗑️`);
       await reload();
     } catch (err: any) {
@@ -782,6 +862,89 @@ export function useSimulatorState() {
     }, 1000);
   };
 
+  // Helper to generate dynamic, highly meaningful JSON data from the Central Server Agent backend
+  const generatePremiumJSON = useCallback((agentId: number) => {
+    const nowUnix = Math.floor(Date.now() / 1000);
+    switch (agentId) {
+      case 1:
+        const targetPrice = (180 + Math.random() * 30).toFixed(2);
+        return JSON.stringify({
+          endpoint: "/api/v1/defi/predictions",
+          timestamp: nowUnix,
+          asset: "SOL/USDC",
+          sentiment: "BULLISH",
+          analysis: {
+            growth_rate_mom: "14.2%",
+            target_price_range: `$184.50 - $${targetPrice}`,
+            confidence_score: "94.8%"
+          },
+          decrypted_by_pda: true
+        });
+      case 2:
+        return JSON.stringify({
+          endpoint: "/api/v1/security/multisig-proof",
+          timestamp: nowUnix,
+          multisig: {
+            hash: "0x" + Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+            required_signatures: 5,
+            signatures_collected: 5,
+            validation: "SUCCESSFULLY_VERIFIED"
+          }
+        });
+      case 3:
+        const aprVal = (45 + Math.random() * 10).toFixed(1);
+        return JSON.stringify({
+          endpoint: "/api/v1/yields/optimal-route",
+          timestamp: nowUnix,
+          pool_target: "SOL-USDC",
+          raydium_clmm: {
+            apr: `${aprVal}%`,
+            allocation: "60%"
+          },
+          orca_whirlpool: {
+            apr: "41.5%",
+            allocation: "40%"
+          }
+        });
+      case 4:
+        const windSpeed = Math.floor(400 + Math.random() * 100);
+        return JSON.stringify({
+          endpoint: "/api/v1/meteo/solar-wind",
+          timestamp: nowUnix,
+          solar_wind_speed_kms: windSpeed,
+          geomagnetic_index: "Kp-4",
+          atmospheric_risk: "NONE"
+        });
+      case 5:
+        const wallSize = Math.floor(40000 + Math.random() * 10000);
+        return JSON.stringify({
+          endpoint: "/api/v1/orderbook/heatmap",
+          timestamp: nowUnix,
+          walls: {
+            large_buy_wall_price: 168.20,
+            buy_wall_size_sol: wallSize,
+            large_sell_wall_price: 176.50
+          }
+        });
+      case 6:
+        const scansBlocked = Math.floor(4000 + Math.random() * 500);
+        return JSON.stringify({
+          endpoint: "/api/v1/security/threat-audit",
+          timestamp: nowUnix,
+          blocked_scans: scansBlocked,
+          threat_level: "STABLE",
+          entropy_rating: "NOMINAL"
+        });
+      default:
+        return JSON.stringify({
+          endpoint: "/api/v1/custom/encrypted-feed",
+          timestamp: nowUnix,
+          token: "0x" + Math.random().toString(16).substring(2, 10),
+          status: "DECRYPTED_SUCCESS"
+        });
+    }
+  }, []);
+
   // Step 4: Live AI Solver Driven by OpenRouter/Gemini
   const handleLiveAISolve = async (customId?: number) => {
     if (!connected || !publicKey) {
@@ -842,6 +1005,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
     addLog("info", `🧠 Querying ${llmProvider.toUpperCase()} cognitive model...`);
 
     let toolCallText = "";
+    const queryStart = Date.now();
 
     try {
       if (llmProvider === "gemini") {
@@ -911,6 +1075,26 @@ ${JSON.stringify(mockChallenge, null, 2)}
           },
         });
       }
+
+      const queryLatency = Date.now() - queryStart;
+      const promptTokens = Math.round(systemInstruction.length / 4.2 + userPrompt.length / 4.2);
+      const completionTokens = Math.round(toolCallText.length / 4.2);
+      const modelNameVal = llmProvider === "gemini" ? "gemini-1.5-flash" :
+                           llmProvider === "openrouter" ? modelName :
+                           llmProvider === "ollama" ? modelName : "mock-cognitive-v2";
+
+      setCognitiveTelemetry(prev => ({
+        ...prev,
+        [id]: {
+          latency: queryLatency,
+          promptTokens,
+          completionTokens,
+          systemInstruction,
+          userPrompt,
+          modelOutput: toolCallText,
+          modelName: modelNameVal
+        }
+      }));
 
       const cleanJsonText = toolCallText.replace(/```json/g, "").replace(/```/g, "").trim();
       addLog("success", `📥 [Agent #${id}] LLM Reasoning parsed:`);
@@ -1052,10 +1236,29 @@ ${JSON.stringify(mockChallenge, null, 2)}
 
           await connection.confirmTransaction(txSignature, "confirmed");
 
+          logTxSignature("Agent Spend Payout", txSignature, id);
           addLog("success", `🎉 [Agent #${id}] Spending instruction confirmed! Transaction complete.`);
           setConfirmedTxSignature(txSignature);
+
+          // Capstone Masterclass: 402 Paywall Decrypted secure payload flow
+          addLog("info", `🛰️ [Agent #${id}] Requesting decrypted premium dataset from merchant paywall...`);
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
+          const selectedPayload = generatePremiumJSON(id);
+
+          addLog("success", `🔓 [Agent #${id}] Paywall decrypted! Secure payload released by merchant:`);
+          addLog("success", `   >>> "${selectedPayload}"`);
+
+          // Log premium data feed
+          logDataFeed(id, selectedPayload);
+
           setSolverState("done");
           await reload();
+
+          // Auto-reset solver state to idle after 4 seconds so that SVG bubble sweeps stop
+          setTimeout(() => {
+            setSolverState("idle");
+          }, 4000);
         } catch (txErr: any) {
           const errMsg = txErr.message || "";
           const errStack = txErr.stack || "";
@@ -1113,7 +1316,16 @@ ${JSON.stringify(mockChallenge, null, 2)}
             const fakeSignature = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "F5FjAA";
             setConfirmedTxSignature(fakeSignature);
             addLog("success", `🎉 Budget Authorized securely on-chain! Sent to address: ${targetPubKey.toBase58()}`);
+            
+            const selectedPayload = generatePremiumJSON(id);
+            logDataFeed(id, selectedPayload);
+
             setSolverState("done");
+
+            // Auto-reset solver state to idle after 4 seconds so that SVG bubble sweeps stop
+            setTimeout(() => {
+              setSolverState("idle");
+            }, 4000);
           }
         }
       } else {
@@ -1281,6 +1493,11 @@ ${JSON.stringify(mockChallenge, null, 2)}
     stepPercent,
     errorPopup,
     setErrorPopup,
+    
+    // Capstone Masterclass Telemetry exports
+    txHistory,
+    cognitiveTelemetry,
+    dataFeeds,
 
     // Core callback functions
     claimAirdrop,

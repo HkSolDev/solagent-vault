@@ -90,7 +90,7 @@ Please execute the spending instruction to resolve the paywall.
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5:3b",
+        model: "qwen3:4b",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }

@@ -294,6 +294,10 @@ export function useSimulatorState() {
 
   const triggerErrorPopup = useCallback((title: string, err: any) => {
     let msg = typeof err === "string" ? err : err.message || err.toString();
+    if (msg.includes("rejected") || msg.includes("User rejected")) {
+      addLog("warning", "❌ Signature cancelled: You rejected the request in your wallet.");
+      return;
+    }
     let code = "On-Chain Revert";
 
     if (msg.includes("6000") || msg.includes("0x1770") || msg.includes("Overflow")) {
@@ -314,9 +318,6 @@ export function useSimulatorState() {
     } else if (msg.includes("custom program error: 0x0") || msg.includes("already in use")) {
       msg = "The Agent ID already exists or the PDA account has already been registered on-chain!";
       code = "0x0 (AccountAlreadyExists)";
-    } else if (msg.includes("User rejected the request")) {
-      msg = "Transaction cancelled: You rejected the signature request in your wallet.";
-      code = "SignatureRejected";
     }
 
     setErrorPopup({ title, message: msg, code });
@@ -599,6 +600,11 @@ export function useSimulatorState() {
       addLog("success", `Deposited $${amountVal} SOLAGNT into Agent #${id} Vault on-chain! 🎉`);
       await reload();
     } catch (err: any) {
+      const errMsg = err?.message || err?.toString() || "";
+      if (errMsg.includes("rejected") || errMsg.includes("User rejected")) {
+        addLog("warning", "❌ Signature cancelled: You rejected the request in your wallet.");
+        return;
+      }
       console.warn("On-chain token deposit rejected, falling back to simulated confirmation...", err);
       addLog("warning", "⚠️ Real token balance missing. Simulating deposit confirmation...");
       setTimeout(async () => {
@@ -657,6 +663,11 @@ export function useSimulatorState() {
       addLog("success", `Withdrew $${amountStr} custom tokens successfully back to your wallet! ✅`);
       await reload();
     } catch (err: any) {
+      const errMsg = err?.message || err?.toString() || "";
+      if (errMsg.includes("rejected") || errMsg.includes("User rejected")) {
+        addLog("warning", "❌ Signature cancelled: You rejected the request in your wallet.");
+        return;
+      }
       console.warn("On-chain withdraw rejected, simulating drain confirmation...", err);
       addLog("warning", "⚠️ On-chain withdraw rejected. Simulating account balance drainage...");
       setTimeout(async () => {
@@ -872,10 +883,12 @@ export function useSimulatorState() {
   // Helper to generate dynamic, highly meaningful JSON data from the Central Server Agent backend
   const generatePremiumJSON = useCallback((agentId: number) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    switch (agentId) {
-      case 1:
+    // Dynamic modulo mapping or randomization based on agentId to ensure dynamic and diverse crypto feeds
+    const pool = [
+      // 1. Defi predictions
+      () => {
         const targetPrice = (180 + Math.random() * 30).toFixed(2);
-        return JSON.stringify({
+        return {
           endpoint: "/api/v1/defi/predictions",
           timestamp: nowUnix,
           asset: "SOL/USDC",
@@ -886,21 +899,49 @@ export function useSimulatorState() {
             confidence_score: "94.8%"
           },
           decrypted_by_pda: true
-        });
-      case 2:
-        return JSON.stringify({
-          endpoint: "/api/v1/security/multisig-proof",
+        };
+      },
+      // 2. Multisig proof
+      () => ({
+        endpoint: "/api/v1/security/multisig-proof",
+        timestamp: nowUnix,
+        multisig: {
+          hash: "0x" + Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+          required_signatures: 5,
+          signatures_collected: 5,
+          validation: "SUCCESSFULLY_VERIFIED"
+        }
+      }),
+      // 3. Pyth price-feed
+      () => {
+        const solPrice = (180 + Math.random() * 10).toFixed(3);
+        const conf = (0.01 + Math.random() * 0.05).toFixed(4);
+        return {
+          endpoint: "/api/v1/pyth/price-feed",
           timestamp: nowUnix,
-          multisig: {
-            hash: "0x" + Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
-            required_signatures: 5,
-            signatures_collected: 5,
-            validation: "SUCCESSFULLY_VERIFIED"
-          }
-        });
-      case 3:
+          pair: "SOL/USD",
+          price: parseFloat(solPrice),
+          confidence: parseFloat(conf),
+          ema_price: parseFloat((parseFloat(solPrice) - 0.05).toFixed(3)),
+          publish_time: nowUnix
+        };
+      },
+      // 4. Jupiter routing
+      () => ({
+        endpoint: "/api/v1/jupiter/quote",
+        timestamp: nowUnix,
+        inputMint: "So11111111111111111111111111111111111111112",
+        outputMint: "EPjFWcc5142ALgC4wu59pC38em9FFC3C1xaDKtd13cR",
+        priceImpactPercent: parseFloat((Math.random() * 0.1).toFixed(3)),
+        routePlan: [
+          { poolId: "RaydiumCLMM", allocationPercent: 60 },
+          { poolId: "OrcaWhirlpool", allocationPercent: 40 }
+        ]
+      }),
+      // 5. Yield routes
+      () => {
         const aprVal = (45 + Math.random() * 10).toFixed(1);
-        return JSON.stringify({
+        return {
           endpoint: "/api/v1/yields/optimal-route",
           timestamp: nowUnix,
           pool_target: "SOL-USDC",
@@ -912,44 +953,62 @@ export function useSimulatorState() {
             apr: "41.5%",
             allocation: "40%"
           }
-        });
-      case 4:
-        const windSpeed = Math.floor(400 + Math.random() * 100);
-        return JSON.stringify({
-          endpoint: "/api/v1/meteo/solar-wind",
+        };
+      },
+      // 6. Helius Webhook
+      () => {
+        const dummySig = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+        return {
+          endpoint: "/api/v1/helius/webhook",
           timestamp: nowUnix,
-          solar_wind_speed_kms: windSpeed,
-          geomagnetic_index: "Kp-4",
-          atmospheric_risk: "NONE"
-        });
-      case 5:
-        const wallSize = Math.floor(40000 + Math.random() * 10000);
-        return JSON.stringify({
-          endpoint: "/api/v1/orderbook/heatmap",
+          type: "USDC_SPL_TRANSFER",
+          signature: "0x" + dummySig,
+          fee: 5000,
+          nativeTransfers: [
+            {
+              fromUserAccount: "HN7cAB...fK6p",
+              toUserAccount: "HN7cAB...u9qR",
+              amount: 10_000_000
+            }
+          ]
+        };
+      },
+      // 7. Kamino lending
+      () => {
+        const apr = (11 + Math.random() * 4).toFixed(2);
+        return {
+          endpoint: "/api/v1/kamino/optimal-yield",
           timestamp: nowUnix,
-          walls: {
-            large_buy_wall_price: 168.20,
-            buy_wall_size_sol: wallSize,
-            large_sell_wall_price: 176.50
-          }
-        });
-      case 6:
-        const scansBlocked = Math.floor(4000 + Math.random() * 500);
-        return JSON.stringify({
-          endpoint: "/api/v1/security/threat-audit",
-          timestamp: nowUnix,
-          blocked_scans: scansBlocked,
-          threat_level: "STABLE",
-          entropy_rating: "NOMINAL"
-        });
-      default:
-        return JSON.stringify({
-          endpoint: "/api/v1/custom/encrypted-feed",
-          timestamp: nowUnix,
-          token: "0x" + Math.random().toString(16).substring(2, 10),
-          status: "DECRYPTED_SUCCESS"
-        });
-    }
+          market: "MainMarket",
+          asset: "USDC",
+          depositApr: `${apr}%`,
+          borrowApr: `${(parseFloat(apr) + 2).toFixed(2)}%`,
+          netSupply: 5432000
+        };
+      },
+      // 8. Tensor floor tracker
+      () => ({
+        endpoint: "/api/v1/tensor/floor-price",
+        timestamp: nowUnix,
+        collection: "MadLads",
+        floorPriceSOL: parseFloat((95 + Math.random() * 15).toFixed(2)),
+        dailyVolumeSOL: 4820,
+        listingsCount: 142
+      }),
+      // 9. Drift orderbook
+      () => ({
+        endpoint: "/api/v1/drift/perp-market",
+        timestamp: nowUnix,
+        marketIndex: 0,
+        oraclePrice: parseFloat((184.23 + Math.random() * 2).toFixed(2)),
+        baseAssetReserve: 1054000,
+        quoteAssetReserve: 98432000
+      })
+    ];
+
+    const index = (agentId - 1) % pool.length;
+    const selectedObj = pool[index]();
+    return JSON.stringify(selectedObj);
   }, []);
 
   // Step 4: Live AI Solver Driven by OpenRouter/Gemini
@@ -1138,57 +1197,9 @@ ${JSON.stringify(mockChallenge, null, 2)}
             ASSOCIATED_TOKEN_PROGRAM_ID
           );
 
-          // 1. Dynamic Check: Ensure Agent's ATA is initialized on-chain
-          const agentAtaInfo = await connection.getAccountInfo(agentTokenAccount);
-          if (!agentAtaInfo) {
-            addLog("info", `🛠️ [Agent #${id}] Vault ATA missing. Deploying on-chain Associated Account...`);
-            const tx = new Transaction().add(
-              createAssociatedTokenAccountInstruction(
-                publicKey,
-                agentTokenAccount,
-                agentPda,
-                usdcMintKey,
-                TOKEN_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
-              )
-            );
-            const latest = await connection.getLatestBlockhash("confirmed");
-            tx.recentBlockhash = latest.blockhash;
-            tx.feePayer = publicKey;
-            
-            addLog("info", "🔑 Confirm the Agent ATA creation in your wallet modal...");
-            const signature = await wallet.sendTransaction(tx, connection);
-            await connection.confirmTransaction(signature, "confirmed");
-            addLog("success", `✅ [Agent #${id}] Associated Account successfully initialized!`);
-          }
-
-          // 2. Dynamic Check: Ensure Merchant's ATA is initialized on-chain
-          const providerAtaInfo = await connection.getAccountInfo(providerTokenAccount);
-          if (!providerAtaInfo) {
-            addLog("info", "🛠️ Recipient merchant ATA missing. Deploying Associated Account...");
-            const tx = new Transaction().add(
-              createAssociatedTokenAccountInstruction(
-                publicKey,
-                providerTokenAccount,
-                targetPubKey,
-                usdcMintKey,
-                TOKEN_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
-              )
-            );
-            const latest = await connection.getLatestBlockhash("confirmed");
-            tx.recentBlockhash = latest.blockhash;
-            tx.feePayer = publicKey;
-
-            addLog("info", "🔑 Confirm the Merchant ATA creation in your wallet modal...");
-            const signature = await wallet.sendTransaction(tx, connection);
-            await connection.confirmTransaction(signature, "confirmed");
-            addLog("success", "✅ Merchant Associated Token Account deployed successfully!");
-          }
-
           // Ensure simulatedSigner has SOL to pay transaction fees autonomously in the background!
           const signerSol = await connection.getBalance(simulatedSigner!.publicKey);
-          if (signerSol < 10_000_000) { // < 0.01 SOL
+          if (signerSol < 20_000_000) { // < 0.02 SOL
             addLog("info", `🤖 [Agent #${id}] Funding autonomous agent hotkey with faucet SOL for zero-prompt background signing...`);
             try {
               const airdropSig = await connection.requestAirdrop(simulatedSigner!.publicKey, 200_000_000); // 0.2 SOL
@@ -1210,6 +1221,62 @@ ${JSON.stringify(mockChallenge, null, 2)}
               await connection.confirmTransaction(transferSig, "confirmed");
               addLog("success", `✅ [Agent #${id}] Autonomous signer hotkey successfully funded from your wallet!`);
             }
+          }
+
+          // 1. Dynamic Check: Ensure Agent's ATA is initialized on-chain
+          const agentAtaInfo = await connection.getAccountInfo(agentTokenAccount);
+          if (!agentAtaInfo) {
+            addLog("info", `🛠️ [Agent #${id}] Vault ATA missing. Deploying on-chain Associated Account...`);
+            const tx = new Transaction().add(
+              createAssociatedTokenAccountInstruction(
+                simulatedSigner!.publicKey,
+                agentTokenAccount,
+                agentPda,
+                usdcMintKey,
+                TOKEN_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+              )
+            );
+            const latest = await connection.getLatestBlockhash("confirmed");
+            tx.recentBlockhash = latest.blockhash;
+            tx.feePayer = simulatedSigner!.publicKey;
+            
+            addLog("info", `🤖 [Agent #${id}] Initializing Agent ATA autonomously...`);
+            tx.sign(simulatedSigner!);
+            const signature = await connection.sendRawTransaction(tx.serialize(), {
+              skipPreflight: false,
+              preflightCommitment: "confirmed",
+            });
+            await connection.confirmTransaction(signature, "confirmed");
+            addLog("success", `✅ [Agent #${id}] Associated Account successfully initialized!`);
+          }
+
+          // 2. Dynamic Check: Ensure Merchant's ATA is initialized on-chain
+          const providerAtaInfo = await connection.getAccountInfo(providerTokenAccount);
+          if (!providerAtaInfo) {
+            addLog("info", `🛠️ [Agent #${id}] Recipient merchant ATA missing. Deploying Associated Account...`);
+            const tx = new Transaction().add(
+              createAssociatedTokenAccountInstruction(
+                simulatedSigner!.publicKey,
+                providerTokenAccount,
+                targetPubKey,
+                usdcMintKey,
+                TOKEN_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+              )
+            );
+            const latest = await connection.getLatestBlockhash("confirmed");
+            tx.recentBlockhash = latest.blockhash;
+            tx.feePayer = simulatedSigner!.publicKey;
+
+            addLog("info", `🤖 [Agent #${id}] Initializing Merchant ATA autonomously...`);
+            tx.sign(simulatedSigner!);
+            const signature = await connection.sendRawTransaction(tx.serialize(), {
+              skipPreflight: false,
+              preflightCommitment: "confirmed",
+            });
+            await connection.confirmTransaction(signature, "confirmed");
+            addLog("success", `✅ [Agent #${id}] Merchant Associated Token Account deployed successfully!`);
           }
 
           addLog("info", `🔑 [Agent #${id}] Signing transaction autonomously via secure hotkey...`);

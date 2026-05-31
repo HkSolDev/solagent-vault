@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { OnChainAgent } from "../../hooks/use-agent-state";
 
 interface DataFeedItem {
@@ -18,6 +18,9 @@ interface DataStreamLedgerProps {
 }
 
 export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedgerProps) {
+  // Modal tracking state for detailed visual payload inspection
+  const [selectedFeed, setSelectedFeed] = useState<DataFeedItem | null>(null);
+
   // Aggregate stats: spent cost and throughput bytes consumed per agent
   const aggregationMap = useMemo(() => {
     const map: Record<number, { spent: number; requests: number; bytes: number }> = {};
@@ -220,7 +223,11 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
                       ${feed.cost.toFixed(2)} SOL
                     </td>
                     <td className="p-2.5 font-mono text-[9px] text-success-emerald group-hover:text-emerald-400 transition-colors">
-                      <div className="max-w-[420px] overflow-hidden text-ellipsis whitespace-nowrap bg-black/50 px-2 py-1 rounded border border-glass-border/20 select-all font-bold tracking-tight">
+                      <div
+                        onClick={() => setSelectedFeed(feed)}
+                        className="max-w-[420px] overflow-hidden text-ellipsis whitespace-nowrap bg-black/50 px-2 py-1 rounded border border-glass-border/20 select-all font-bold tracking-tight cursor-pointer hover:border-success-emerald/50 transition-colors"
+                        title="Click to expand full decrypted JSON dataset"
+                      >
                         {feed.payload}
                       </div>
                     </td>
@@ -234,6 +241,83 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
           </div>
         )}
       </div>
+
+      {/* Sleek High-Fidelity Decrypted Payload Viewer Modal Overlay */}
+      {selectedFeed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md transition-all">
+          <div className="w-full max-w-lg glass-panel p-6 rounded-2xl border border-electric-purple/35 bg-zinc-950/95 shadow-2xl flex flex-col gap-4">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-glass-border/30">
+              <div className="flex items-center gap-2">
+                <span className="text-success-emerald text-base animate-pulse">🔓</span>
+                <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  DECRYPTED PAYLOAD VIEWER: AGENT #{selectedFeed.agentId}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedFeed(null)}
+                className="text-zinc-500 hover:text-white font-mono text-xs cursor-pointer p-1 transition-colors"
+              >
+                [ESC / CLOSE]
+              </button>
+            </div>
+
+            {/* Meta details list */}
+            <div className="grid grid-cols-2 gap-2.5 text-[9px] font-mono text-zinc-400 uppercase font-bold">
+              <div className="p-2 bg-black/45 border border-glass-border/20 rounded">
+                Feed Type: <span className="text-vivid-cyan">{selectedFeed.feedType}</span>
+              </div>
+              <div className="p-2 bg-black/45 border border-glass-border/20 rounded">
+                Budget Paid: <span className="text-white">${selectedFeed.cost.toFixed(2)} SOLAGNT</span>
+              </div>
+              <div className="p-2 bg-black/45 border border-glass-border/20 rounded">
+                Packet Size: <span className="text-white">{selectedFeed.size} Bytes</span>
+              </div>
+              <div className="p-2 bg-black/45 border border-glass-border/20 rounded">
+                Decrypted Time: <span className="text-white">{new Date(selectedFeed.timestamp).toLocaleTimeString()}</span>
+              </div>
+            </div>
+
+            {/* Formatted JSON Panel */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold">Raw JSON Packet Content</span>
+              <div className="w-full max-h-[200px] overflow-y-auto bg-black/60 border border-glass-border/30 p-3.5 rounded-lg text-[9px] font-mono text-zinc-300 leading-relaxed scrollbar-thin select-all">
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(selectedFeed.payload);
+                    return (
+                      <pre className="text-success-emerald font-bold whitespace-pre-wrap">
+                        {JSON.stringify(parsed, null, 2)}
+                      </pre>
+                    );
+                  } catch (e) {
+                    return <pre className="text-success-emerald font-bold">{selectedFeed.payload}</pre>;
+                  }
+                })()}
+              </div>
+            </div>
+
+            {/* Quick Copy / Close controls */}
+            <div className="flex gap-3 justify-end font-mono text-[9px] mt-1">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedFeed.payload);
+                }}
+                className="px-3.5 py-1.5 rounded border border-vivid-cyan/35 hover:bg-vivid-cyan/15 text-vivid-cyan cursor-pointer transition-all font-bold"
+              >
+                📋 COPY RAW JSON
+              </button>
+              <button
+                onClick={() => setSelectedFeed(null)}
+                className="px-3.5 py-1.5 rounded bg-electric-purple hover:bg-purple-600 text-white cursor-pointer transition-all font-bold"
+              >
+                DONE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

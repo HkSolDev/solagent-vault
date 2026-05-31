@@ -15,8 +15,9 @@ yarn-error.log*
 .anchor/
 /deploy/
 target/
-*.keypair.json
 *.json
+!package.json
+!tsconfig.json
 
 # IDEs
 .idea/

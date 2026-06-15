@@ -5,10 +5,22 @@ import React, { useState } from "react";
 interface AiConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  llmProvider: "gemini" | "openrouter" | "ollama" | "mock";
-  onProviderSelect: (val: string) => void;
+  llmProvider: "orchestrator" | "gemini" | "openrouter" | "ollama" | "mock" | "cerebras" | "mistral" | "kimi" | "deepseek";
+  onProviderSelect: (val: any) => void;
   apiKey: string;
   onApiKeyChange: (val: string) => void;
+  cerebrasKey: string;
+  onCerebrasKeyChange: (val: string) => void;
+  geminiKey: string;
+  onGeminiKeyChange: (val: string) => void;
+  mistralKey: string;
+  onMistralKeyChange: (val: string) => void;
+  kimiKey: string;
+  onKimiKeyChange: (val: string) => void;
+  deepseekKey: string;
+  onDeepseekKeyChange: (val: string) => void;
+  openrouterKey: string;
+  onOpenrouterKeyChange: (val: string) => void;
   modelName: string;
   onModelNameChange: (val: string) => void;
   merchantWallet: string;
@@ -27,6 +39,18 @@ export default function AiConfigModal({
   onProviderSelect,
   apiKey,
   onApiKeyChange,
+  cerebrasKey,
+  onCerebrasKeyChange,
+  geminiKey,
+  onGeminiKeyChange,
+  mistralKey,
+  onMistralKeyChange,
+  kimiKey,
+  onKimiKeyChange,
+  deepseekKey,
+  onDeepseekKeyChange,
+  openrouterKey,
+  onOpenrouterKeyChange,
   modelName,
   onModelNameChange,
   merchantWallet,
@@ -79,7 +103,7 @@ export default function AiConfigModal({
         </p>
 
         {/* Input fields */}
-        <div className="flex flex-col gap-3.5 my-1">
+        <div className="flex flex-col gap-3.5 my-1 max-h-[350px] overflow-y-auto pr-1">
           <div>
             <label className="text-[10px] text-zinc-500 block mb-1">AI Cognitive Provider</label>
             <select
@@ -87,14 +111,73 @@ export default function AiConfigModal({
               onChange={(e) => onProviderSelect(e.target.value)}
               className="w-full bg-black/60 border border-glass-border p-2 rounded text-xs text-white focus:outline-none"
             >
-              <option value="mock">Simulated AI Agent (Mock / Offline)</option>
-              <option value="openrouter">OpenRouter (Xiaomi Mimo/DeepSeek)</option>
-              <option value="gemini">Google Gemini AI Studio</option>
+              <option value="orchestrator">🧠 Smart Fallback Orchestrator (Free First)</option>
+              <option value="mock">Simulated AI Agent (Offline Mode)</option>
+              <option value="cerebras">Cerebras Llama3.1 (Free)</option>
+              <option value="gemini">Google Gemini Studio (Free)</option>
+              <option value="deepseek">DeepSeek API (Paid)</option>
+              <option value="mistral">Mistral AI API (Paid)</option>
+              <option value="kimi">Kimi/Moonshot API (Paid)</option>
+              <option value="openrouter">OpenRouter API</option>
               <option value="ollama">Local Ollama</option>
             </select>
           </div>
 
-          {llmProvider !== "mock" && llmProvider !== "ollama" && (
+          {/* Render inputs based on provider select */}
+          {llmProvider === "orchestrator" ? (
+            <div className="flex flex-col gap-2.5 p-2 rounded border border-glass-border/30 bg-black/40">
+              <span className="text-[9px] text-vivid-cyan font-bold uppercase tracking-wider block">Orchestrator Key Registry</span>
+              <div>
+                <label className="text-[8px] text-zinc-500 block mb-0.5">Cerebras Key (Free Path #1)</label>
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={cerebrasKey}
+                  onChange={(e) => onCerebrasKeyChange(e.target.value)}
+                  placeholder="Enter Cerebras API Key"
+                  className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] text-zinc-500 block mb-0.5">Gemini Key (Free Path #2)</label>
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={geminiKey}
+                  onChange={(e) => onGeminiKeyChange(e.target.value)}
+                  placeholder="Enter Gemini API Key"
+                  className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] text-zinc-500 block mb-0.5">OpenRouter Key (Free & Paid)</label>
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={openrouterKey}
+                  onChange={(e) => onOpenrouterKeyChange(e.target.value)}
+                  placeholder="Enter OpenRouter API Key"
+                  className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] text-zinc-500 block mb-0.5">DeepSeek Key (Paid Path #1)</label>
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={deepseekKey}
+                  onChange={(e) => onDeepseekKeyChange(e.target.value)}
+                  placeholder="Enter DeepSeek API Key"
+                  className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                />
+              </div>
+              <div className="flex justify-end mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="text-[8px] text-zinc-500 hover:text-zinc-300"
+                >
+                  {showApiKey ? "Hide Keys" : "Show Keys"}
+                </button>
+              </div>
+            </div>
+          ) : llmProvider !== "mock" && llmProvider !== "ollama" && (
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-[10px] text-zinc-500 block">API Access Credentials</label>
@@ -108,14 +191,26 @@ export default function AiConfigModal({
               </div>
               <input
                 type={showApiKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-                placeholder={`Enter your ${llmProvider === "gemini" ? "Gemini" : "OpenRouter"} API Key`}
+                value={
+                  llmProvider === "gemini" ? geminiKey :
+                  llmProvider === "cerebras" ? cerebrasKey :
+                  llmProvider === "mistral" ? mistralKey :
+                  llmProvider === "kimi" ? kimiKey :
+                  llmProvider === "deepseek" ? deepseekKey :
+                  openrouterKey
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (llmProvider === "gemini") onGeminiKeyChange(val);
+                  else if (llmProvider === "cerebras") onCerebrasKeyChange(val);
+                  else if (llmProvider === "mistral") onMistralKeyChange(val);
+                  else if (llmProvider === "kimi") onKimiKeyChange(val);
+                  else if (llmProvider === "deepseek") onDeepseekKeyChange(val);
+                  else onOpenrouterKeyChange(val);
+                }}
+                placeholder={`Enter your ${llmProvider.toUpperCase()} API Key`}
                 className="w-full bg-black/60 border border-glass-border p-2 rounded text-xs text-white focus:outline-none placeholder-zinc-700"
               />
-              <span className="text-[8px] text-zinc-500 mt-1.5 block leading-normal font-sans">
-                ℹ️ Optional: If left blank, the app securely falls back to your <code className="text-vivid-cyan bg-white/5 px-1 rounded">.env</code> keys.
-              </span>
             </div>
           )}
 

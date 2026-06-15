@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import DashboardSimulator from "@/components/dashboard-simulator";
 
 export default function DashboardPage() {
@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
           {/* Main dashboard rules controller simulator containing the 5-Step Wizard & Live Diagnostics */}
           <div className="w-full">
-            <DashboardSimulator />
+            <Suspense fallback={<div className="w-full h-64 flex items-center justify-center font-mono text-zinc-500 animate-pulse">Initializing Security Workspace...</div>}><DashboardSimulator /></Suspense>
           </div>
 
         </div>

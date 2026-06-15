@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSimulatorState } from "../hooks/use-simulator-state";
 
 // Modular UI imports
@@ -13,6 +14,8 @@ import FleetGrid from "./wizard/fleet-grid";
 import AiConfigModal from "./wizard/ai-config-modal";
 import AgentTerminal from "./agent-terminal";
 import ErrorModalOverlay from "./error-modal-overlay";
+import FlowWalkthroughSlide from "./wizard/flow-walkthrough-slide";
+import OrchestratorPanel from "./wizard/orchestrator-panel";
 
 // Capstone Masterclass Premium components
 import FleetTopologyMap from "./wizard/fleet-topology-map";
@@ -21,7 +24,7 @@ import PerformanceTelemetry from "./wizard/performance-telemetry";
 import DataStreamLedger from "./wizard/data-stream-ledger";
 
 export default function DashboardSimulator() {
-  // Destructure all states and dispatches cleanly from our custom hook
+  const searchParams = useSearchParams();
   const simulator = useSimulatorState();
 
   const {
@@ -54,6 +57,18 @@ export default function DashboardSimulator() {
     setLlmProvider,
     apiKey,
     setApiKey,
+    cerebrasKey,
+    setCerebrasKey,
+    geminiKey,
+    setGeminiKey,
+    mistralKey,
+    setMistralKey,
+    kimiKey,
+    setKimiKey,
+    deepseekKey,
+    setDeepseekKey,
+    openrouterKey,
+    setOpenrouterKey,
     modelName,
     setModelName,
     merchantWallet,
@@ -86,38 +101,42 @@ export default function DashboardSimulator() {
     handleEmergencyFleetFreeze,
   } = simulator;
 
-  // Dual-Tab selection state
-  const [activeTabName, setActiveTabName] = useState<"fleet" | "analytics">("fleet");
+  const [activeTabName, setActiveTabName] = useState<"fleet" | "analytics" | "guide" | "orchestrator">("fleet");
 
-  // Contextual AI Selector modal states
+  useEffect(() => {
+    const view = searchParams.get("view");
+    if (view === "guide") {
+      setActiveTabName("guide");
+    } else if (view === "analytics") {
+      setActiveTabName("analytics");
+    } else if (view === "orchestrator") {
+      setActiveTabName("orchestrator");
+    }
+  }, [searchParams]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalIsBatch, setModalIsBatch] = useState(false);
   const [modalTargetAgentId, setModalTargetAgentId] = useState(1);
 
-  // Active Agent reference from list
   const activeAgent = agents.find((a) => a.id === activeTab);
 
-  // Clean steps: Completed indicators
   const isStep1Completed = connected && solBalance !== null && solBalance > 0;
   const isStep2Completed = vaultInitialized === true && agents.length > 0;
   const isStep3Completed = usdcMintInput !== "" && usdcMintInput !== "No token deployed";
 
-  // Triggered when running AI solver from a Fleet Card
   const handleOpenSingleSolverModal = (id: number) => {
     setModalTargetAgentId(id);
     setModalIsBatch(false);
     setIsModalOpen(true);
   };
 
-  // Triggered when running batch AI solvers from the Fleet Header
   const handleOpenBatchSolverModal = () => {
     setModalIsBatch(true);
     setIsModalOpen(true);
   };
 
-  // Executes the actual solver sequence when the Configure AI Brain modal submits
   const handleModalSubmit = async () => {
-    setIsModalOpen(false); // Close modal instantly so user can see background diagnostics in real time
+    setIsModalOpen(false);
     if (modalIsBatch) {
       await handleBatchRunSolvers();
     } else {
@@ -127,36 +146,37 @@ export default function DashboardSimulator() {
 
   return (
     <div className="w-full flex flex-col gap-6">
-      {/* Sleek Dual-Tab Navigation bar */}
-      <div className="flex border-b border-glass-border/30 gap-6 mb-2 relative z-20">
+      <div className="flex border-b border-glass-border/30 gap-6 mb-2 relative z-20 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTabName("fleet")}
-          className={`pb-2.5 font-mono text-xs font-bold tracking-wider cursor-pointer border-b-2 transition-all flex items-center gap-1.5 focus:outline-none ${
-            activeTabName === "fleet"
-              ? "border-electric-purple text-white shadow-[0_4px_10px_rgba(147,51,234,0.15)] font-black"
-              : "border-transparent text-zinc-500 hover:text-zinc-300"
-          }`}
+          className={"pb-2.5 font-mono text-xs font-bold tracking-wider cursor-pointer border-b-2 transition-all flex items-center gap-1.5 focus:outline-none whitespace-nowrap " + (activeTabName === "fleet" ? "border-electric-purple text-white shadow-[0_4px_10px_rgba(147,51,234,0.15)] font-black" : "border-transparent text-zinc-500 hover:text-zinc-300")}
         >
-          <span>🛰️</span> FLEET COMMAND CONSOLE
+          <span>🛰️</span> FLEET COMMAND
+        </button>
+        <button
+          onClick={() => setActiveTabName("orchestrator")}
+          className={"pb-2.5 font-mono text-xs font-bold tracking-wider cursor-pointer border-b-2 transition-all flex items-center gap-1.5 focus:outline-none whitespace-nowrap " + (activeTabName === "orchestrator" ? "border-electric-purple text-white shadow-[0_4px_10px_rgba(147,51,234,0.15)] font-black" : "border-transparent text-zinc-500 hover:text-zinc-300")}
+        >
+          <span>🎖️</span> ORCHESTRATOR
         </button>
         <button
           onClick={() => setActiveTabName("analytics")}
-          className={`pb-2.5 font-mono text-xs font-bold tracking-wider cursor-pointer border-b-2 transition-all flex items-center gap-1.5 focus:outline-none ${
-            activeTabName === "analytics"
-              ? "border-electric-purple text-white shadow-[0_4px_10px_rgba(147,51,234,0.15)] font-black"
-              : "border-transparent text-zinc-500 hover:text-zinc-300"
-          }`}
+          className={"pb-2.5 font-mono text-xs font-bold tracking-wider cursor-pointer border-b-2 transition-all flex items-center gap-1.5 focus:outline-none whitespace-nowrap " + (activeTabName === "analytics" ? "border-electric-purple text-white shadow-[0_4px_10px_rgba(147,51,234,0.15)] font-black" : "border-transparent text-zinc-500 hover:text-zinc-300")}
         >
-          <span>🧠</span> COGNITIVE DIAGNOSTICS & ANALYTICS
+          <span>🧠</span> DIAGNOSTICS
+        </button>
+        <button
+          onClick={() => setActiveTabName("guide")}
+          className={"pb-2.5 font-mono text-xs font-bold tracking-wider cursor-pointer border-b-2 transition-all flex items-center gap-1.5 focus:outline-none whitespace-nowrap " + (activeTabName === "guide" ? "border-electric-purple text-white shadow-[0_4px_10px_rgba(147,51,234,0.15)] font-black" : "border-transparent text-zinc-500 hover:text-zinc-300")}
+        >
+          <span>📖</span> FLOW GUIDE
         </button>
       </div>
 
       {activeTabName === "fleet" ? (
         <>
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-20">
-            {/* LEFT COLUMN: Clean 3-Step Setup Wizard Accordion */}
             <div className="lg:col-span-7 flex flex-col gap-5">
-              {/* Step 1: Wallet Connection */}
               <StepWalletFaucet
                 connected={connected}
                 solBalance={solBalance}
@@ -167,8 +187,6 @@ export default function DashboardSimulator() {
                 isCompleted={isStep1Completed}
                 onToggle={() => handleToggleStep(1)}
               />
-
-              {/* Step 2: Spawn Agent PDA */}
               <StepAgentPda
                 vaultInitialized={vaultInitialized}
                 agentsCount={agents.length}
@@ -189,8 +207,6 @@ export default function DashboardSimulator() {
                 isCompleted={isStep2Completed}
                 onToggle={() => handleToggleStep(2)}
               />
-
-              {/* Step 3: Custom SPL Mint Setup */}
               <StepTokenDeposit
                 usdcMintInput={usdcMintInput}
                 setUsdcMintInput={setUsdcMintInput}
@@ -200,8 +216,6 @@ export default function DashboardSimulator() {
                 isCompleted={isStep3Completed}
                 onToggle={() => handleToggleStep(3)}
               />
-
-              {/* Step 4: Policy Revert Stress Tests */}
               <StepStressTest
                 spendAmount={spendAmount}
                 setSpendAmount={setSpendAmount}
@@ -212,10 +226,7 @@ export default function DashboardSimulator() {
                 onToggle={() => handleToggleStep(5)}
               />
             </div>
-
-            {/* RIGHT COLUMN: Diagnostic status monitor & Real-time Console */}
             <div className="lg:col-span-5 flex flex-col gap-6">
-              {/* Sticky diagnostics diagnostic board */}
               <StatusMonitor
                 connected={connected}
                 walletAddress={walletAddress}
@@ -224,13 +235,9 @@ export default function DashboardSimulator() {
                 usdcMint={usdcMintInput}
                 simulatedSignerPubKey={simulatedSigner ? simulatedSigner.publicKey.toBase58() : ""}
               />
-
-              {/* Real-time scrollable Script Console logs */}
               <AgentTerminal logs={terminalLogs} />
             </div>
           </div>
-
-          {/* FULL-WIDTH MULTI-AGENT FLEET CONTROLLER */}
           {connected && (
             <FleetGrid
               agents={agents}
@@ -248,10 +255,9 @@ export default function DashboardSimulator() {
             />
           )}
         </>
-      ) : (
+      ) : activeTabName === "analytics" ? (
         <div className="w-full flex flex-col gap-8 relative z-20">
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* LEFT COLUMN: SVG network graph and prompt debuggers */}
             <div className="lg:col-span-7 flex flex-col gap-6">
               <FleetTopologyMap
                 agents={agents}
@@ -260,21 +266,16 @@ export default function DashboardSimulator() {
                 agentSolverStates={agentSolverStates}
                 onSelectAgent={setActiveTab}
               />
-              
               <CognitiveAuditPanel
                 activeAgentId={activeTab}
                 telemetry={cognitiveTelemetry[activeTab]}
               />
             </div>
-
-            {/* RIGHT COLUMN: Live Velocity Gauges and Explorer lists */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               <PerformanceTelemetry
                 agents={agents}
                 txHistory={txHistory}
               />
-              
-              {/* Quick Autopilot details card */}
               <div className="glass-panel p-5 rounded-xl border border-glass-border bg-black/45 shadow-2xl flex flex-col gap-3 font-mono">
                 <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                   <span>🤖</span> SECURE AUTOPILOT ACTIVE SYSTEMS
@@ -293,20 +294,59 @@ export default function DashboardSimulator() {
               </div>
             </div>
           </div>
-
-          {/* Full-width premium Bilateral Client-to-Backend data ledger */}
           <DataStreamLedger agents={agents} dataFeeds={dataFeeds} />
+        </div>
+      ) : activeTabName === "guide" ? (
+        <div className="w-full flex flex-col gap-6 relative z-20 max-w-4xl mx-auto py-4">
+          <div className="flex flex-col gap-2 mb-4">
+            <h2 className="text-xl font-bold font-mono text-white tracking-tight uppercase text-center md:text-left">
+              SolAgent Vault Protocol Flow
+            </h2>
+            <p className="text-xs text-zinc-400 font-mono text-center md:text-left">
+              Understand the core mechanics of HTTP 402 on-chain payments and spending guardrails.
+            </p>
+          </div>
+          <FlowWalkthroughSlide />
+          <div className="glass-panel p-6 rounded-xl border border-glass-border bg-black/30 font-mono">
+             <h4 className="text-xs font-bold text-vivid-cyan mb-2 uppercase tracking-widest">Architectural Note:</h4>
+             <p className="text-[11px] text-zinc-400 leading-relaxed">
+               The SolAgent Vault is designed for zero-trust environments. By isolating agent funds into individual PDAs (Program Derived Addresses), you ensure that even a compromised AI model cannot drain your main treasury. Each transaction is verified by the Solana runtime against your immutable on-chain policies.
+             </p>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full flex flex-col gap-6 relative z-20">
+          <div className="flex flex-col gap-2 mb-4">
+            <h2 className="text-xl font-bold font-mono text-white tracking-tight uppercase">
+              Multi-Agent AI Orchestrator
+            </h2>
+            <p className="text-xs text-zinc-400 font-mono">
+              Provision hierarchical agent fleets with delegated on-chain budgets and watchdog security monitoring.
+            </p>
+          </div>
+          <OrchestratorPanel />
         </div>
       )}
 
-      {/* Dynamic Configure AI Brain Context Modal Prompt */}
       <AiConfigModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         llmProvider={llmProvider}
-        onProviderSelect={(val) => setLlmProvider(val as any)}
+        onProviderSelect={(val) => setLlmProvider(val)}
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
+        cerebrasKey={cerebrasKey}
+        onCerebrasKeyChange={setCerebrasKey}
+        geminiKey={geminiKey}
+        onGeminiKeyChange={setGeminiKey}
+        mistralKey={mistralKey}
+        onMistralKeyChange={setMistralKey}
+        kimiKey={kimiKey}
+        onKimiKeyChange={setKimiKey}
+        deepseekKey={deepseekKey}
+        onDeepseekKeyChange={setDeepseekKey}
+        openrouterKey={openrouterKey}
+        onOpenrouterKeyChange={setOpenrouterKey}
         modelName={modelName}
         onModelNameChange={setModelName}
         merchantWallet={merchantWallet}
@@ -318,7 +358,6 @@ export default function DashboardSimulator() {
         targetAgentId={modalTargetAgentId}
       />
 
-      {/* Transaction Revert visual overlay card */}
       {errorPopup && (
         <ErrorModalOverlay
           title={errorPopup.title}

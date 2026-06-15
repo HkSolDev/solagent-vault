@@ -4,10 +4,22 @@ import React, { useState } from "react";
 import WizardStepLayout from "./wizard-step-layout";
 
 interface StepAiSolverProps {
-  llmProvider: "gemini" | "openrouter" | "ollama" | "mock";
-  onProviderSelect: (val: string) => void;
+  llmProvider: "orchestrator" | "gemini" | "openrouter" | "ollama" | "mock" | "cerebras" | "mistral" | "kimi" | "deepseek";
+  onProviderSelect: (val: any) => void;
   apiKey: string;
   onApiKeyChange: (val: string) => void;
+  cerebrasKey: string;
+  onCerebrasKeyChange: (val: string) => void;
+  geminiKey: string;
+  onGeminiKeyChange: (val: string) => void;
+  mistralKey: string;
+  onMistralKeyChange: (val: string) => void;
+  kimiKey: string;
+  onKimiKeyChange: (val: string) => void;
+  deepseekKey: string;
+  onDeepseekKeyChange: (val: string) => void;
+  openrouterKey: string;
+  onOpenrouterKeyChange: (val: string) => void;
   modelName: string;
   onModelNameChange: (val: string) => void;
   merchantWallet: string;
@@ -35,6 +47,18 @@ export default function StepAiSolver({
   onProviderSelect,
   apiKey,
   onApiKeyChange,
+  cerebrasKey,
+  onCerebrasKeyChange,
+  geminiKey,
+  onGeminiKeyChange,
+  mistralKey,
+  onMistralKeyChange,
+  kimiKey,
+  onKimiKeyChange,
+  deepseekKey,
+  onDeepseekKeyChange,
+  openrouterKey,
+  onOpenrouterKeyChange,
   modelName,
   onModelNameChange,
   merchantWallet,
@@ -89,14 +113,72 @@ export default function StepAiSolver({
                   onChange={(e) => onProviderSelect(e.target.value)}
                   className="w-full bg-black/40 border border-glass-border p-2 rounded text-xs text-white focus:outline-none"
                 >
+                  <option value="orchestrator">🧠 Smart Fallback Orchestrator (Free First)</option>
                   <option value="mock">Simulated AI Agent (Offline Mode)</option>
-                  <option value="openrouter">OpenRouter (Xiaomi Mimo/DeepSeek)</option>
-                  <option value="gemini">Google Gemini AI Studio</option>
+                  <option value="cerebras">Cerebras Llama3.1 (Free)</option>
+                  <option value="gemini">Google Gemini Studio (Free)</option>
+                  <option value="deepseek">DeepSeek API (Paid)</option>
+                  <option value="mistral">Mistral AI API (Paid)</option>
+                  <option value="kimi">Kimi/Moonshot API (Paid)</option>
+                  <option value="openrouter">OpenRouter API</option>
                   <option value="ollama">Local Ollama (Local Node)</option>
                 </select>
               </div>
 
-              {llmProvider !== "mock" && llmProvider !== "ollama" && (
+              {llmProvider === "orchestrator" ? (
+                <div className="flex flex-col gap-2.5 p-2 rounded border border-glass-border/30 bg-black/40">
+                  <span className="text-[9px] text-vivid-cyan font-bold uppercase tracking-wider block">Orchestrator Key Registry</span>
+                  <div>
+                    <label className="text-[8px] text-zinc-500 block mb-0.5">Cerebras Key (Free Path #1)</label>
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      value={cerebrasKey}
+                      onChange={(e) => onCerebrasKeyChange(e.target.value)}
+                      placeholder="Enter Cerebras API Key"
+                      className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] text-zinc-500 block mb-0.5">Gemini Key (Free Path #2)</label>
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      value={geminiKey}
+                      onChange={(e) => onGeminiKeyChange(e.target.value)}
+                      placeholder="Enter Gemini API Key"
+                      className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] text-zinc-500 block mb-0.5">OpenRouter Key (Free & Paid)</label>
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      value={openrouterKey}
+                      onChange={(e) => onOpenrouterKeyChange(e.target.value)}
+                      placeholder="Enter OpenRouter API Key"
+                      className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[8px] text-zinc-500 block mb-0.5">DeepSeek Key (Paid Path #1)</label>
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      value={deepseekKey}
+                      onChange={(e) => onDeepseekKeyChange(e.target.value)}
+                      placeholder="Enter DeepSeek API Key"
+                      className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                    />
+                  </div>
+                  <div className="flex justify-end mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="text-[8px] text-zinc-500 hover:text-zinc-300"
+                    >
+                      {showApiKey ? "Hide Keys" : "Show Keys"}
+                    </button>
+                  </div>
+                </div>
+              ) : llmProvider !== "mock" && llmProvider !== "ollama" && (
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] text-zinc-500 block">API Access Credentials</label>
@@ -110,14 +192,26 @@ export default function StepAiSolver({
                   </div>
                   <input
                     type={showApiKey ? "text" : "password"}
-                    value={apiKey}
-                    onChange={(e) => onApiKeyChange(e.target.value)}
-                    placeholder={`Enter your ${llmProvider === "gemini" ? "Gemini" : "OpenRouter"} API Key`}
+                    value={
+                      llmProvider === "gemini" ? geminiKey :
+                      llmProvider === "cerebras" ? cerebrasKey :
+                      llmProvider === "mistral" ? mistralKey :
+                      llmProvider === "kimi" ? kimiKey :
+                      llmProvider === "deepseek" ? deepseekKey :
+                      openrouterKey
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (llmProvider === "gemini") onGeminiKeyChange(val);
+                      else if (llmProvider === "cerebras") onCerebrasKeyChange(val);
+                      else if (llmProvider === "mistral") onMistralKeyChange(val);
+                      else if (llmProvider === "kimi") onKimiKeyChange(val);
+                      else if (llmProvider === "deepseek") onDeepseekKeyChange(val);
+                      else onOpenrouterKeyChange(val);
+                    }}
+                    placeholder={`Enter your ${llmProvider.toUpperCase()} API Key`}
                     className="w-full bg-black/40 border border-glass-border p-2 rounded text-xs text-white focus:outline-none placeholder-zinc-700"
                   />
-                  <span className="text-[8px] text-zinc-500 mt-1.5 block leading-normal font-sans">
-                    ℹ️ Optional: If left blank, the app securely falls back to your <code className="text-vivid-cyan bg-white/5 px-1 rounded">.env</code> keys.
-                  </span>
                 </div>
               )}
 
@@ -179,54 +273,52 @@ export default function StepAiSolver({
                 disabled={solverState !== "idle" && solverState !== "done" && solverState !== "error"}
                 className="flex-1 py-3 rounded bg-gradient-to-r from-electric-purple to-purple-600 hover:opacity-90 font-bold text-[11px] text-white shadow-glow-purple flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {solverState === "idle" && <span>🤖 Run Live AI Solver</span>}
-                {solverState === "fetching" && <span>📥 Fetching challenge...</span>}
-                {solverState === "querying" && <span>🧠 Thinking...</span>}
-                {solverState === "signing" && <span>⚙️ Executing Tx...</span>}
-                {solverState === "done" && <span>✓ Live Solved! Run again</span>}
-                {solverState === "error" && <span>❌ Solver Error! Retry</span>}
+                <span>🚀</span> {solverState === "querying" ? "AI RESOLVING..." : solverState === "signing" ? "SIGNING..." : `LAUNCH AI AGENT #${activeAgentId}`}
               </button>
-
+              
               <button
                 onClick={onStartDemo}
                 disabled={actionLoading}
-                className="py-3 px-4 rounded bg-zinc-800 hover:bg-zinc-700 border border-glass-border font-bold text-[11px] text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-5 py-3 rounded border border-glass-border bg-glass-card hover:bg-white/5 font-bold text-[11px] text-zinc-300 transition-all cursor-pointer disabled:opacity-50"
               >
-                <span>✨ Autopilot Demo</span>
+                🎥 1-Click Autopilot
               </button>
             </div>
           )}
-
-          {/* Explorer details output card */}
-          {solverState === "done" && confirmedTxSignature && (
-            <div className="p-3 rounded border border-success-emerald/30 bg-success-emerald/5 flex flex-col gap-1 mt-2">
-              <div className="text-[10px] font-bold text-success-emerald flex items-center gap-1.5">
-                <span>🎉</span> SPENDING BUDGET RELEASED ON-CHAIN
-              </div>
-              <div className="text-[9px] text-zinc-500 truncate">
-                Signature: {confirmedTxSignature}
-              </div>
-              <a
-                href={
-                  confirmedTxSignature.endsWith("F5FjAA")
-                    ? `https://explorer.solana.com/address/${merchantWallet}?cluster=devnet`
-                    : `https://explorer.solana.com/tx/${confirmedTxSignature}?cluster=devnet`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="text-[10px] text-vivid-cyan hover:underline flex items-center gap-1 mt-1 font-bold"
-              >
-                🔍 Verify live transaction details on Solana Explorer →
-              </a>
-            </div>
-          )}
-
-          {solverState === "error" && solverErrorMsg && (
-            <div className="p-2.5 rounded border border-emergency-red/30 bg-emergency-red/5 text-[9px] text-emergency-red mt-2 leading-relaxed">
-              <strong>Solver Interception Error:</strong> {solverErrorMsg}
-            </div>
-          )}
         </div>
+
+        {/* Solver Diagnostics feedback panel */}
+        {solverState !== "idle" && (
+          <div className="p-3 border border-glass-border/30 bg-black/45 rounded flex flex-col gap-2">
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-zinc-500">STATE STATUS:</span>
+              <span className={`font-bold capitalize ${
+                solverState === "done" ? "text-success-emerald" :
+                solverState === "error" ? "text-emergency-red" : "text-amber-500 animate-pulse"
+              }`}>{solverState}</span>
+            </div>
+
+            {solverState === "error" && solverErrorMsg && (
+              <div className="text-[10px] text-emergency-red p-2 bg-emergency-red/10 border border-emergency-red/20 rounded font-mono break-all leading-normal">
+                {solverErrorMsg}
+              </div>
+            )}
+
+            {solverState === "done" && confirmedTxSignature && (
+              <div className="flex flex-col gap-1 text-[10px] p-2 bg-success-emerald/10 border border-success-emerald/20 rounded font-mono leading-normal">
+                <span className="text-success-emerald font-bold">🎉 Authorization Completed!</span>
+                <a
+                  href={`https://explorer.solana.com/tx/${confirmedTxSignature}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-vivid-cyan hover:underline break-all mt-1 block"
+                >
+                  🔗 View Tx: {confirmedTxSignature.substring(0, 32)}...
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </WizardStepLayout>
   );

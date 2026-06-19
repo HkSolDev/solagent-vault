@@ -69,6 +69,8 @@ export default function DashboardSimulator() {
     setDeepseekKey,
     openrouterKey,
     setOpenrouterKey,
+    groqKey,
+    setGroqKey,
     modelName,
     setModelName,
     merchantWallet,
@@ -347,6 +349,8 @@ export default function DashboardSimulator() {
         onDeepseekKeyChange={setDeepseekKey}
         openrouterKey={openrouterKey}
         onOpenrouterKeyChange={setOpenrouterKey}
+        groqKey={groqKey}
+        onGroqKeyChange={setGroqKey}
         modelName={modelName}
         onModelNameChange={setModelName}
         merchantWallet={merchantWallet}

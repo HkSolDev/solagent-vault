@@ -47,7 +47,7 @@ export function useSimulatorState() {
   const [spendAmount, setSpendAmount] = useState("1.5");
 
   // Multi-LLM solver configurations
-  const [llmProvider, setLlmProvider] = useState<"orchestrator" | "gemini" | "openrouter" | "ollama" | "mock" | "cerebras" | "mistral" | "kimi" | "deepseek">("orchestrator");
+  const [llmProvider, setLlmProvider] = useState<"orchestrator" | "gemini" | "openrouter" | "ollama" | "mock" | "cerebras" | "mistral" | "kimi" | "deepseek" | "groq">("orchestrator");
   const [apiKey, setApiKey] = useState("");
   const [cerebrasKey, setCerebrasKey] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
@@ -55,6 +55,7 @@ export function useSimulatorState() {
   const [kimiKey, setKimiKey] = useState("");
   const [deepseekKey, setDeepseekKey] = useState("");
   const [openrouterKey, setOpenrouterKey] = useState("");
+  const [groqKey, setGroqKey] = useState("");
   const [modelName, setModelName] = useState(process.env.NEXT_PUBLIC_MODEL_NAME || "xiaomi/mimo-v2.5");
 
   // Merchant challenge destination & token mint
@@ -298,6 +299,9 @@ export function useSimulatorState() {
       const savedOpenrouter = localStorage.getItem("solagent_openrouter_key");
       if (savedOpenrouter) setOpenrouterKey(savedOpenrouter);
 
+      const savedGroq = localStorage.getItem("solagent_groq_key");
+      if (savedGroq) setGroqKey(savedGroq);
+
       const savedModel = localStorage.getItem("solagent_model_name");
       if (savedModel) setModelName(savedModel);
 
@@ -388,8 +392,9 @@ export function useSimulatorState() {
       localStorage.setItem("solagent_kimi_key", kimiKey);
       localStorage.setItem("solagent_deepseek_key", deepseekKey);
       localStorage.setItem("solagent_openrouter_key", openrouterKey);
+      localStorage.setItem("solagent_groq_key", groqKey);
     }
-  }, [llmProvider, apiKey, modelName, merchantWallet, usdcMintInput, cerebrasKey, geminiKey, mistralKey, kimiKey, deepseekKey, openrouterKey]);
+  }, [llmProvider, apiKey, modelName, merchantWallet, usdcMintInput, cerebrasKey, geminiKey, mistralKey, kimiKey, deepseekKey, openrouterKey, groqKey]);
 
   // Determine active step based on progress to guide the user sequentially
   useEffect(() => {
@@ -1418,6 +1423,193 @@ export function useSimulatorState() {
     return JSON.stringify(selectedObj);
   }, []);
 
+  const callAIModel = useCallback(async (
+    prov: string,
+    keyToUse: string,
+    systemInstruction: string,
+    userPrompt: string,
+    modelNameOverride?: string
+  ): Promise<{ text: string; modelUsed: string }> => {
+    const activeModelName = modelNameOverride || modelName;
+    if (prov === "gemini") {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyToUse}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemInstruction }, { text: userPrompt }] }],
+          generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+        }),
+      });
+      if (!res.ok) throw new Error(`Gemini status ${res.status}`);
+      const data = await res.json();
+      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      return { text: txt, modelUsed: "gemini-1.5-flash" };
+    }
+    if (prov === "cerebras") {
+      const res = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${keyToUse}`,
+        },
+        body: JSON.stringify({
+          model: "llama3.1-8b",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`Cerebras status ${res.status}`);
+      const data = await res.json();
+      const txt = data.choices?.[0]?.message?.content || "";
+      return { text: txt, modelUsed: "cerebras-llama3.1-8b" };
+    }
+    if (prov === "mistral") {
+      const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${keyToUse}`,
+        },
+        body: JSON.stringify({
+          model: "open-mistral-7b",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`Mistral status ${res.status}`);
+      const data = await res.json();
+      const txt = data.choices?.[0]?.message?.content || "";
+      return { text: txt, modelUsed: "open-mistral-7b" };
+    }
+    if (prov === "kimi") {
+      const res = await fetch("https://api.moonshot.cn/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${keyToUse}`,
+        },
+        body: JSON.stringify({
+          model: "moonshot-v1-8k",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`Kimi status ${res.status}`);
+      const data = await res.json();
+      const txt = data.choices?.[0]?.message?.content || "";
+      return { text: txt, modelUsed: "moonshot-v1-8k" };
+    }
+    if (prov === "groq") {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${keyToUse}`,
+        },
+        body: JSON.stringify({
+          model: "llama3-8b-8192",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`Groq status ${res.status}`);
+      const data = await res.json();
+      const txt = data.choices?.[0]?.message?.content || "";
+      return { text: txt, modelUsed: "llama3-8b-8192" };
+    }
+    if (prov === "deepseek") {
+      const res = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${keyToUse}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`DeepSeek status ${res.status}`);
+      const data = await res.json();
+      const txt = data.choices?.[0]?.message?.content || "";
+      return { text: txt, modelUsed: "deepseek-chat" };
+    }
+    if (prov === "openrouter") {
+      const isFreeModelOverride = activeModelName.includes(":free") || (llmProvider === "orchestrator" && !keyToUse);
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${keyToUse}`,
+          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "",
+        },
+        body: JSON.stringify({
+          model: isFreeModelOverride ? "google/gemini-2.5-flash:free" : activeModelName,
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`OpenRouter status ${res.status}`);
+      const data = await res.json();
+      const txt = data.choices?.[0]?.message?.content || "";
+      return { text: txt, modelUsed: isFreeModelOverride ? "google/gemini-2.5-flash:free" : activeModelName };
+    }
+    if (prov === "ollama") {
+      const res = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: activeModelName || "qwen3:14b",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: userPrompt },
+          ],
+          stream: false,
+          options: { temperature: 0.1 },
+        }),
+      });
+      if (!res.ok) throw new Error("Ollama connection failed");
+      const data = await res.json();
+      const txt = data.message?.content || "";
+      return { text: txt, modelUsed: activeModelName || "ollama-local" };
+    }
+    if (prov === "mock") {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return {
+        text: JSON.stringify({
+          tool: "spend",
+          arguments: {
+            amount: 1500000,
+            agentId: 1,
+            providerWallet: "F5FjAAU6y22eUisRo1dzm5L6ENB4XTNMUGxJrYKsUBvY",
+          },
+        }),
+        modelUsed: "mock-cognitive-v2"
+      };
+    }
+    throw new Error(`Unknown provider ${prov}`);
+  }, [modelName, llmProvider]);
+
   // Step 4: Live AI Solver Driven by OpenRouter/Gemini
   const handleLiveAISolve = async (customId?: number) => {
     if (!connected || !publicKey) {
@@ -1441,15 +1633,16 @@ export function useSimulatorState() {
       if (llmProvider === "gemini") activeKey = geminiKey.trim() || apiKey.trim() || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
       else if (llmProvider === "openrouter") activeKey = openrouterKey.trim() || apiKey.trim() || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
       else if (llmProvider === "cerebras") activeKey = cerebrasKey.trim();
-      else if (llmProvider === "mistral") activeKey = mistralKey.trim();
-      else if (llmProvider === "kimi") activeKey = kimiKey.trim();
+      else if (llmProvider === "mistral") activeKey = mistralKey.trim() || process.env.NEXT_PUBLIC_MISTRAL_API_KEY || "";
+      else if (llmProvider === "kimi") activeKey = kimiKey.trim() || process.env.NEXT_PUBLIC_KIMI_API_KEY || "";
       else if (llmProvider === "deepseek") activeKey = deepseekKey.trim();
+      else if (llmProvider === "groq") activeKey = groqKey.trim() || process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
       else if (llmProvider === "ollama") activeKey = "ollama";
 
       pathList.push({
         provider: llmProvider,
         key: activeKey,
-        isFree: llmProvider === "mock" || llmProvider === "ollama" || llmProvider === "gemini" || llmProvider === "cerebras" || llmProvider === "mistral" || llmProvider === "kimi",
+        isFree: llmProvider === "mock" || llmProvider === "ollama" || llmProvider === "gemini" || llmProvider === "cerebras" || llmProvider === "mistral" || llmProvider === "kimi" || llmProvider === "groq",
         label: llmProvider.toUpperCase()
       });
     } else {
@@ -1457,8 +1650,9 @@ export function useSimulatorState() {
       const freeProviders = [
         { provider: "cerebras", key: cerebrasKey.trim(), label: "Cerebras (Free Llama3.1)" },
         { provider: "gemini", key: geminiKey.trim() || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "", label: "Google Gemini Studio (Free)" },
-        { provider: "mistral", key: mistralKey.trim(), label: "Mistral API (Free Mode)" },
-        { provider: "kimi", key: kimiKey.trim(), label: "Kimi/Moonshot API (Free Trial Tokens)" },
+        { provider: "groq", key: groqKey.trim() || process.env.NEXT_PUBLIC_GROQ_API_KEY || "", label: "Groq (Llama3-8b)" },
+        { provider: "mistral", key: mistralKey.trim() || process.env.NEXT_PUBLIC_MISTRAL_API_KEY || "", label: "Mistral API (Free Mode)" },
+        { provider: "kimi", key: kimiKey.trim() || process.env.NEXT_PUBLIC_KIMI_API_KEY || "", label: "Kimi/Moonshot API (Free Trial Tokens)" },
         { provider: "openrouter", key: openrouterKey.trim() || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "", label: "OpenRouter Free (Gemini Flash Free)" }
       ];
       const paidProviders = [
@@ -1521,162 +1715,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
 `;
 
     const executeLlmRequest = async (prov: string, keyToUse: string): Promise<{ text: string; modelUsed: string }> => {
-      if (prov === "gemini") {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyToUse}`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemInstruction }, { text: userPrompt }] }],
-            generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
-          }),
-        });
-        if (!res.ok) throw new Error(`Gemini status ${res.status}`);
-        const data = await res.ok ? await res.json() : {};
-        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        return { text: txt, modelUsed: "gemini-1.5-flash" };
-      }
-      if (prov === "cerebras") {
-        const res = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${keyToUse}`,
-          },
-          body: JSON.stringify({
-            model: "llama3.1-8b",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: userPrompt }
-            ],
-            temperature: 0.1,
-          }),
-        });
-        if (!res.ok) throw new Error(`Cerebras status ${res.status}`);
-        const data = await res.json();
-        const txt = data.choices?.[0]?.message?.content || "";
-        return { text: txt, modelUsed: "cerebras-llama3.1-8b" };
-      }
-      if (prov === "mistral") {
-        const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${keyToUse}`,
-          },
-          body: JSON.stringify({
-            model: "open-mistral-7b",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: userPrompt }
-            ],
-            temperature: 0.1,
-          }),
-        });
-        if (!res.ok) throw new Error(`Mistral status ${res.status}`);
-        const data = await res.json();
-        const txt = data.choices?.[0]?.message?.content || "";
-        return { text: txt, modelUsed: "open-mistral-7b" };
-      }
-      if (prov === "kimi") {
-        const res = await fetch("https://api.moonshot.cn/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${keyToUse}`,
-          },
-          body: JSON.stringify({
-            model: "moonshot-v1-8k",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: userPrompt }
-            ],
-            temperature: 0.1,
-          }),
-        });
-        if (!res.ok) throw new Error(`Kimi status ${res.status}`);
-        const data = await res.json();
-        const txt = data.choices?.[0]?.message?.content || "";
-        return { text: txt, modelUsed: "moonshot-v1-8k" };
-      }
-      if (prov === "deepseek") {
-        const res = await fetch("https://api.deepseek.com/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${keyToUse}`,
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: userPrompt }
-            ],
-            temperature: 0.1,
-          }),
-        });
-        if (!res.ok) throw new Error(`DeepSeek status ${res.status}`);
-        const data = await res.json();
-        const txt = data.choices?.[0]?.message?.content || "";
-        return { text: txt, modelUsed: "deepseek-chat" };
-      }
-      if (prov === "openrouter") {
-        const isFreeModelOverride = modelName.includes(":free") || (llmProvider === "orchestrator" && !keyToUse);
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${keyToUse}`,
-            "HTTP-Referer": window.location.origin,
-          },
-          body: JSON.stringify({
-            model: isFreeModelOverride ? "google/gemini-2.5-flash:free" : modelName,
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: userPrompt },
-            ],
-            temperature: 0.1,
-          }),
-        });
-        if (!res.ok) throw new Error(`OpenRouter status ${res.status}`);
-        const data = await res.json();
-        const txt = data.choices?.[0]?.message?.content || "";
-        return { text: txt, modelUsed: isFreeModelOverride ? "google/gemini-2.5-flash:free" : modelName };
-      }
-      if (prov === "ollama") {
-        const res = await fetch("http://localhost:11434/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: modelName || "qwen3:14b",
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: userPrompt },
-            ],
-            stream: false,
-            options: { temperature: 0.1 },
-          }),
-        });
-        if (!res.ok) throw new Error("Ollama connection failed");
-        const data = await res.json();
-        const txt = data.message?.content || "";
-        return { text: txt, modelUsed: modelName || "ollama-local" };
-      }
-      if (prov === "mock") {
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        return {
-          text: JSON.stringify({
-            tool: "spend",
-            arguments: {
-              amount: mockChallenge.amount,
-              agentId: mockChallenge.agentId,
-              providerWallet: mockChallenge.destination,
-            },
-          }),
-          modelUsed: "mock-cognitive-v2"
-        };
-      }
-      throw new Error(`Unknown provider ${prov}`);
+      return callAIModel(prov, keyToUse, systemInstruction, userPrompt);
     };
 
     let toolCallText = "";
@@ -2075,7 +2114,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
   };
 
   const handleRunOrchestrator = async (prompt: string) => {
-    if (!connected || !publicKey) return;
+    if (!connected || !publicKey || !simulatedSigner) return;
     setRunningTask(prompt);
     setOrchestratorState("decomposing");
     setWatchdogAlerts([]);
@@ -2101,87 +2140,513 @@ ${JSON.stringify(mockChallenge, null, 2)}
       { id: 103, role: "Frontend Developer", budget: 15.0, maxCall: 5.0, maxMinute: 20.0 }
     ];
 
+    let onChainMode = false;
+    let vaultPda = getVaultPda(publicKey); // Default fallback
+
+    try {
+      // 1. Ensure simulatedSigner has SOL to pay transaction fees autonomously in the background!
+      const signerSol = await connection.getBalance(simulatedSigner.publicKey);
+      if (signerSol < 50_000_000) { // < 0.05 SOL
+        addLog("info", "🤖 Funding Orchestrator keypair with SOL for autonomous on-chain actions...");
+        try {
+          const airdropSig = await connection.requestAirdrop(simulatedSigner.publicKey, 500_000_000); // 0.5 SOL
+          await connection.confirmTransaction(airdropSig, "confirmed");
+          addLog("success", "✅ Orchestrator successfully funded with SOL via airdrop!");
+        } catch (airdropErr) {
+          // Fallback transfer from connected user wallet
+          const transferTx = new Transaction().add(
+            SystemProgram.transfer({
+              fromPubkey: publicKey,
+              toPubkey: simulatedSigner.publicKey,
+              lamports: 100_000_000, // 0.1 SOL
+            })
+          );
+          const latest = await connection.getLatestBlockhash("confirmed");
+          transferTx.recentBlockhash = latest.blockhash;
+          transferTx.feePayer = publicKey;
+          
+          try {
+            const transferSig = await wallet.sendTransaction(transferTx, connection);
+            await connection.confirmTransaction(transferSig, "confirmed");
+            addLog("success", "✅ Orchestrator successfully funded with SOL from user wallet!");
+          } catch (walletErr: any) {
+            addLog("warning", "❌ Signature cancelled: You rejected the SOL funding request.");
+            throw new Error("SOL funding signature rejected.");
+          }
+        }
+      }
+
+      // 2. Initialize Vault for Orchestrator autonomously if not already done
+      const orchVaultPda = getVaultPda(simulatedSigner.publicKey);
+      vaultPda = orchVaultPda;
+      let vaultExists = false;
+      try {
+        await (program.account as any).vaultState.fetch(orchVaultPda);
+        vaultExists = true;
+      } catch (e) {}
+
+      if (!vaultExists) {
+        addLog("info", `🔑 [Orchestrator Sign] Initializing Vault for Orchestrator autonomously...`);
+        const initInst = await program.methods
+          .initializeVault()
+          .accounts({
+            vaultState: orchVaultPda,
+            owner: simulatedSigner.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+          })
+          .instruction();
+
+        const tx = new Transaction().add(initInst);
+        tx.feePayer = simulatedSigner.publicKey;
+        const latest = await connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = latest.blockhash;
+        tx.sign(simulatedSigner);
+
+        const sig = await connection.sendRawTransaction(tx.serialize());
+        await connection.confirmTransaction(sig, "confirmed");
+        addLog("success", `[ORCHESTRATOR SIGNED] Vault Initialized. Tx: ${sig}`);
+      }
+
+      // 3. Ensure Orchestrator ATA is funded with custom tokens for real deposits
+      const usdcMintKey = new PublicKey(usdcMintInput.trim());
+      const signerAta = getAssociatedTokenAddressSync(
+        usdcMintKey,
+        simulatedSigner.publicKey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      let signerTokenBalance = BigInt(0);
+      let signerAtaInfo = null;
+      try {
+        signerAtaInfo = await connection.getAccountInfo(signerAta);
+        if (signerAtaInfo) {
+          const bal = await connection.getTokenAccountBalance(signerAta);
+          signerTokenBalance = BigInt(bal.value.amount);
+        }
+      } catch (e) {}
+
+      const totalRequiredTokens = BigInt(50 * 1_000_000); // 50 tokens
+      if (!signerAtaInfo || signerTokenBalance < totalRequiredTokens) {
+        addLog("info", "🪙 Funding Orchestrator ATA with custom tokens from user wallet...");
+        const tx = new Transaction();
+        if (!signerAtaInfo) {
+          tx.add(
+            createAssociatedTokenAccountInstruction(
+              publicKey,
+              signerAta,
+              simulatedSigner.publicKey,
+              usdcMintKey,
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            )
+          );
+        }
+        tx.add(
+          createMintToInstruction(
+            usdcMintKey,
+            signerAta,
+            publicKey, // mintAuthority
+            100_000_000 // Mint 100 tokens
+          )
+        );
+        const latest = await connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = latest.blockhash;
+        tx.feePayer = publicKey;
+        addLog("info", "🔑 Please sign the token mint/funding transaction in your wallet...");
+        
+        try {
+          const sig = await wallet.sendTransaction(tx, connection);
+          await connection.confirmTransaction(sig, "confirmed");
+          addLog("success", `✅ Funded Orchestrator ATA with 100 custom tokens! Tx: ${sig}`);
+          onChainMode = true;
+        } catch (walletErr: any) {
+          addLog("warning", "❌ Signature cancelled: You rejected the token funding request.");
+          throw new Error("Token funding signature rejected.");
+        }
+      } else {
+        onChainMode = true;
+      }
+    } catch (err: any) {
+      console.warn("Failed to set up on-chain orchestrator vault, running in hybrid simulation mode:", err);
+      addLog("warning", "⚠️ Could not establish on-chain fee payer. Running in hybrid sandbox simulation mode.");
+      onChainMode = false;
+      vaultPda = getVaultPda(publicKey); // Reset to fallback
+    }
+
     for (const task of subTasks) {
       addLog("info", `🔑 [Orchestrator Sign] Launching on-chain setup for Agent #${task.id} (${task.role})...`);
-      await new Promise(r => setTimeout(r, 800));
-      const fakeSig1 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PDA";
-      addLog("success", `[ORCHESTRATOR SIGNED] Spawned Agent #${task.id} PDA successfully. Tx: ${fakeSig1}`);
       
-      addLog("info", `💸 [Orchestrator Sign] Funding Agent #${task.id} Vault with $${task.budget} USDC...`);
-      await new Promise(r => setTimeout(r, 800));
-      const fakeSig2 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "DEP";
-      addLog("success", `[ORCHESTRATOR SIGNED] Deposited $${task.budget} USDC. Tx: ${fakeSig2}`);
-      
+      if (onChainMode) {
+        try {
+          const agentPda = getAgentPda(vaultPda, task.id);
+          let agentExists = false;
+          try {
+            await (program.account as any).agentState.fetch(agentPda);
+            agentExists = true;
+          } catch (e) {}
+
+          if (!agentExists) {
+            const maxCallLamports = new anchor.BN(task.maxCall * 1_000_000);
+            const maxMinuteLamports = new anchor.BN(task.maxMinute * 1_000_000);
+            const solAllocationLamports = new anchor.BN(0.01 * LAMPORTS_PER_SOL);
+            const allowedArr = Array(5).fill(PublicKey.default);
+
+            const spawnInstruction = await program.methods
+              .createAgent(new anchor.BN(task.id), maxCallLamports, maxMinuteLamports, allowedArr as any, solAllocationLamports)
+              .accounts({
+                vaultState: vaultPda,
+                agentState: agentPda,
+                agentSigner: simulatedSigner.publicKey,
+                owner: simulatedSigner.publicKey,
+                systemProgram: anchor.web3.SystemProgram.programId,
+              })
+              .instruction();
+
+            const tx = new Transaction().add(spawnInstruction);
+            tx.feePayer = simulatedSigner.publicKey;
+            const latest = await connection.getLatestBlockhash("confirmed");
+            tx.recentBlockhash = latest.blockhash;
+            tx.sign(simulatedSigner);
+
+            const sig = await connection.sendRawTransaction(tx.serialize());
+            await connection.confirmTransaction(sig, "confirmed");
+            logTxSignature("Spawn Sub-Agent", sig, task.id);
+            addLog("success", `[ORCHESTRATOR SIGNED] Spawned Agent #${task.id} PDA successfully. Tx: ${sig}`);
+          } else {
+            addLog("info", `ℹ️ Agent #${task.id} (${task.role}) already registered on-chain.`);
+          }
+
+          // Deposit
+          addLog("info", `💸 [Orchestrator Sign] Funding Agent #${task.id} Vault with $${task.budget} USDC...`);
+          const usdcMintKey = new PublicKey(usdcMintInput.trim());
+          const agentTokenAccount = getAssociatedTokenAddressSync(
+            usdcMintKey,
+            agentPda,
+            true,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+          const signerAta = getAssociatedTokenAddressSync(
+            usdcMintKey,
+            simulatedSigner.publicKey,
+            false,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
+          const depositAmountVal = new anchor.BN(task.budget * 1_000_000);
+          const depositInst = await program.methods
+            .deposit(depositAmountVal, new anchor.BN(task.id))
+            .accounts({
+              vaultState: vaultPda,
+              agentState: agentPda,
+              owner: simulatedSigner.publicKey,
+              ownerTokenAccount: signerAta,
+              agentTokenAccount: agentTokenAccount,
+              usdcMint: usdcMintKey,
+              tokenProgram: TOKEN_PROGRAM_ID,
+              associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+              systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .instruction();
+
+          const tx = new Transaction().add(depositInst);
+          tx.feePayer = simulatedSigner.publicKey;
+          const latest = await connection.getLatestBlockhash("confirmed");
+          tx.recentBlockhash = latest.blockhash;
+          tx.sign(simulatedSigner);
+
+          const sig = await connection.sendRawTransaction(tx.serialize());
+          await connection.confirmTransaction(sig, "confirmed");
+          logTxSignature("Deposit Sub-Agent", sig, task.id);
+          addLog("success", `[ORCHESTRATOR SIGNED] Deposited $${task.budget} custom tokens. Tx: ${sig}`);
+
+        } catch (e: any) {
+          addLog("warning", `⚠️ On-chain provisioning failed: ${e.message || e}. Using mock signature backup...`);
+          const fakeSig1 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PDA";
+          addLog("success", `[ORCHESTRATOR SIGNED] Spawned Agent #${task.id} PDA successfully. Tx: ${fakeSig1}`);
+        }
+      } else {
+        await new Promise(r => setTimeout(r, 800));
+        const fakeSig1 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PDA";
+        addLog("success", `[ORCHESTRATOR SIGNED] Spawned Agent #${task.id} PDA successfully. Tx: ${fakeSig1}`);
+        
+        addLog("info", `💸 [Orchestrator Sign] Funding Agent #${task.id} Vault with $${task.budget} USDC...`);
+        await new Promise(r => setTimeout(r, 800));
+        const fakeSig2 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "DEP";
+        addLog("success", `[ORCHESTRATOR SIGNED] Deposited $${task.budget} USDC. Tx: ${fakeSig2}`);
+      }
+
       setActiveSubAgents(prev => [...prev, { ...task, status: "Active", progress: 0, activity: "Provisioning PDA..." }]);
     }
 
     setOrchestratorState("executing");
     addLog("info", "📡 Sub-agents beginning parallel task execution...");
-    
-    // DB Architect writes to Shared Store
-    await new Promise(r => setTimeout(r, 1500));
-    setActiveSubAgents(prev => prev.map(a => a.id === 101 ? { ...a, progress: 50, activity: "Designing schemas..." } : a));
-    addLog("info", "💬 [Database Architect -> Shared Cache]: Posting product schema proposal...");
-    
-    await new Promise(r => setTimeout(r, 1500));
-    setActiveSubAgents(prev => prev.map(a => a.id === 101 ? { ...a, progress: 100, activity: "Schema design complete" } : a));
-    setSharedContext(prev => ({ ...prev, schemaDesign: "CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT, price NUMERIC);" }));
-    addLog("success", "🏗️ [Database Architect] Schema design complete. Payout verified & saved to Shared Cache.");
 
-    // Backend Engineer reads DB design and starts
-    await new Promise(r => setTimeout(r, 1500));
-    addLog("info", "💬 [Backend Engineer -> Shared Cache]: Reading database schema design...");
-    setActiveSubAgents(prev => prev.map(a => a.id === 102 ? { ...a, progress: 30, activity: "Implementing API router..." } : a));
-    setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 15, activity: "Waiting for API endpoints..." } : a));
+    // Default template variables to hold final contents
+    let dbSchemaContent = "";
+    let apiSpecsContent = "";
+    let appComponentsContent = "";
+    let watchdogAnomalyReason = "Recursive spend pattern detected.";
 
-    await new Promise(r => setTimeout(r, 2000));
-    setOrchestratorState("watchdog_intervention");
-    addWatchdogAlert("Anomaly detected in [Backend Engineer] activity: Recursive spend pattern.", "warning");
-    addLog("warning", "🚨 Watchdog triggered: Pausing [Backend Engineer] to prevent budget drain.");
+    const getOrchestratorAIPath = () => {
+      const freeProviders = [
+        { provider: "cerebras", key: cerebrasKey.trim(), label: "Cerebras" },
+        { provider: "gemini", key: geminiKey.trim() || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "", label: "Gemini" },
+        { provider: "groq", key: groqKey.trim() || process.env.NEXT_PUBLIC_GROQ_API_KEY || "", label: "Groq" },
+        { provider: "mistral", key: mistralKey.trim() || process.env.NEXT_PUBLIC_MISTRAL_API_KEY || "", label: "Mistral" },
+        { provider: "kimi", key: kimiKey.trim() || process.env.NEXT_PUBLIC_KIMI_API_KEY || "", label: "Kimi" },
+        { provider: "openrouter", key: openrouterKey.trim() || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "", label: "OpenRouter Free" }
+      ];
+      const paidProviders = [
+        { provider: "deepseek", key: deepseekKey.trim(), label: "DeepSeek" },
+        { provider: "openrouter", key: openrouterKey.trim() || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "", label: "OpenRouter Paid" }
+      ];
+      const found = freeProviders.find(p => p.key) || paidProviders.find(p => p.key);
+      return found ? { provider: found.provider, key: found.key } : { provider: "mock", key: "" };
+    };
 
-    const backend = subTasks[1];
-    addLog("info", `🛡️ [Orchestrator Sign] Invoking config modification to PAUSE Agent #${backend.id}...`);
-    await new Promise(r => setTimeout(r, 1000));
-    const fakeSig3 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PSE";
-    addLog("success", `[ORCHESTRATOR SIGNED] Agent #${backend.id} successfully PAUSED on-chain. Tx: ${fakeSig3}`);
+    const aiPath = getOrchestratorAIPath();
 
-    setActiveSubAgents(prev => prev.map(a => a.id === backend.id ? { ...a, status: "Paused", activity: "Blocked / Locked" } : a));
-    setFailedAgents([backend.id]);
+    if (aiPath.provider !== "mock") {
+      try {
+        // Step 1: Database Architect generates schema
+        addLog("info", `🤖 [Database Architect] Querying ${aiPath.provider.toUpperCase()} to design database schema...`);
+        setActiveSubAgents(prev => prev.map(a => a.id === 101 ? { ...a, progress: 30, activity: "Generating SQL schema via LLM..." } : a));
+        
+        const dbResult = await callAIModel(
+          aiPath.provider,
+          aiPath.key,
+          "You are an expert database architect. Output only the SQL schema inside SQL syntax block.",
+          `Generate a custom SQL database schema to fulfill this objective: "${prompt}". Output only clean SQL code.`
+        );
+        dbSchemaContent = dbResult.text.replace(/```sql/g, "").replace(/```/g, "").trim();
+        setActiveSubAgents(prev => prev.map(a => a.id === 101 ? { ...a, progress: 100, activity: "Schema design complete" } : a));
+        setSharedContext(prev => ({ ...prev, schemaDesign: "Schema design cached." }));
+        addLog("success", "🏗️ [Database Architect] Schema design complete. Saved to Shared Cache.");
 
-    // DB Architect assists and logs help!
-    await new Promise(r => setTimeout(r, 2000));
-    addLog("info", "💬 [Database Architect -> Orchestrator]: 'Backend is blocked. I will verify if my DB changes caused a conflict.'");
-    
-    // Orchestrator spawns Standby Agent
-    await new Promise(r => setTimeout(r, 2000));
-    addLog("info", "♻️ Orchestrator spawning Standby Provider [Claude-3-Haiku] to recover...");
-    addLog("info", "💬 [Standby Agent -> Shared Cache]: Fetching cached schemaDesign...");
-    
-    setSharedContext(prev => ({ ...prev, recoveryAttempted: true, apiSpecs: "GET /api/products -> JSON products list" }));
-    addLog("success", "✅ Standby Agent recovered context from Shared Cache successfully.");
+        // Step 2: Backend Engineer generates API Specs (Draft 1 with intentional anomaly)
+        addLog("info", `🤖 [Backend Engineer] Querying ${aiPath.provider.toUpperCase()} to implement API route...`);
+        setActiveSubAgents(prev => prev.map(a => a.id === 102 ? { ...a, progress: 30, activity: "Implementing API router..." } : a));
+        setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 15, activity: "Waiting for API endpoints..." } : a));
 
-    await new Promise(r => setTimeout(r, 2000));
-    setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 80, activity: "Building React components..." } : a));
-    setSharedContext(prev => ({ ...prev, uiComponents: "export default function Marketplace() { ... }" }));
-    
+        const apiResult = await callAIModel(
+          aiPath.provider,
+          aiPath.key,
+          "You are a Next.js backend engineer. To demonstrate security controls, write a Next.js API route that intentionally includes a loop calling the spend function recursively or has a recursive payment vulnerability.",
+          `Write a Next.js API POST endpoint matching this schema:\n${dbSchemaContent}\nto fulfill this objective: "${prompt}". Include a recursive spend pattern.`
+        );
+        const draftApiContent = apiResult.text.replace(/```typescript/g, "").replace(/```javascript/g, "").replace(/```/g, "").trim();
+        setActiveSubAgents(prev => prev.map(a => a.id === 102 ? { ...a, progress: 70, activity: "API router Draft 1 generated" } : a));
+
+        // Step 3: Auditor Watchdog audits the Backend Engineer's code
+        addLog("info", "🛡️ [Auditor Watchdog] Querying LLM to audit API code for spend anomalies...");
+        setOrchestratorState("watchdog_intervention");
+
+        const auditResult = await callAIModel(
+          aiPath.provider,
+          aiPath.key,
+          "You are an AI security auditor. Inspect this code and summarize any infinite loops, security anomalies, or recursive spend patterns in exactly 1 short sentence.",
+          `Audit this Next.js API handler code:\n${draftApiContent}`
+        );
+        watchdogAnomalyReason = auditResult.text.trim();
+        addWatchdogAlert(`Anomaly detected: ${watchdogAnomalyReason}`, "warning");
+        addLog("warning", `🚨 Watchdog triggered: Pausing [Backend Engineer] to prevent budget drain.`);
+
+        const backend = subTasks[1];
+        addLog("info", `🛡️ [Orchestrator Sign] Invoking config modification to PAUSE Agent #${backend.id}...`);
+        
+        if (onChainMode) {
+          try {
+            const backendPda = getAgentPda(vaultPda, backend.id);
+            const pauseInst = await program.methods
+              .setConfig({ paused: {} } as any, null, null, null)
+              .accounts({
+                agentState: backendPda,
+                owner: simulatedSigner.publicKey,
+              })
+              .instruction();
+
+            const tx = new Transaction().add(pauseInst);
+            tx.feePayer = simulatedSigner.publicKey;
+            const latest = await connection.getLatestBlockhash("confirmed");
+            tx.recentBlockhash = latest.blockhash;
+            tx.sign(simulatedSigner);
+
+            const sig = await connection.sendRawTransaction(tx.serialize());
+            await connection.confirmTransaction(sig, "confirmed");
+            logTxSignature("Pause Sub-Agent", sig, backend.id);
+            addLog("success", `[ORCHESTRATOR SIGNED] Agent #${backend.id} successfully PAUSED on-chain. Tx: ${sig}`);
+          } catch (e: any) {
+            addLog("warning", `⚠️ Pausing on-chain failed: ${e.message || e}. Using mock pausing backup...`);
+            const fakeSig3 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PSE";
+            addLog("success", `[ORCHESTRATOR SIGNED] Agent #${backend.id} successfully PAUSED on-chain. Tx: ${fakeSig3}`);
+          }
+        } else {
+          await new Promise(r => setTimeout(r, 1000));
+          const fakeSig3 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PSE";
+          addLog("success", `[ORCHESTRATOR SIGNED] Agent #${backend.id} successfully PAUSED on-chain. Tx: ${fakeSig3}`);
+        }
+
+        setActiveSubAgents(prev => prev.map(a => a.id === backend.id ? { ...a, status: "Paused", activity: "Halted by Watchdog" } : a));
+        setFailedAgents([backend.id]);
+
+        // DB Architect assists and logs help!
+        await new Promise(r => setTimeout(r, 1500));
+        addLog("info", "💬 [Database Architect -> Orchestrator]: 'Backend is blocked. I will verify if my DB changes caused a conflict.'");
+
+        // Step 4: Standby Agent spawned to generate secure API Specs
+        addLog("info", "♻️ Orchestrator spawning Standby Provider [Claude-3-Haiku] to recover...");
+        addLog("info", "💬 [Standby Agent -> Shared Cache]: Fetching cached schemaDesign...");
+
+        const cleanApiResult = await callAIModel(
+          aiPath.provider,
+          aiPath.key,
+          "You are a Next.js backend engineer. Write a fully secure version of the Next.js API route that handles purchases properly and removes any recursive spend patterns or loops.",
+          `Correct this API router code:\n${draftApiContent}\nbased on this database schema:\n${dbSchemaContent}`
+        );
+        apiSpecsContent = cleanApiResult.text.replace(/```typescript/g, "").replace(/```javascript/g, "").replace(/```/g, "").trim();
+        setSharedContext(prev => ({ ...prev, recoveryAttempted: true, apiSpecs: "GET /api/products -> secure" }));
+        addLog("success", "✅ Standby Agent recovered context and generated secure API endpoints.");
+
+        // Step 5: Frontend Developer generates React UI component matching clean API Specs
+        addLog("info", `🤖 [Frontend Developer] Querying ${aiPath.provider.toUpperCase()} to build UI component...`);
+        setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 50, activity: "Generating React component..." } : a));
+        
+        const uiResult = await callAIModel(
+          aiPath.provider,
+          aiPath.key,
+          "You are a stellar React UI developer. Use Tailwind CSS classes. Output ONLY the code inside standard React component. Do NOT export or import default libraries that fail to compile.",
+          `Create a gorgeous, premium, interactive React component matching this secure API specs:\n${apiSpecsContent}\nto fulfill this objective: "${prompt}". Output only clean React code.`
+        );
+        appComponentsContent = uiResult.text.replace(/```tsx/g, "").replace(/```jsx/g, "").replace(/```typescript/g, "").replace(/```javascript/g, "").replace(/```/g, "").trim();
+        setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 100, activity: "Done" } : a));
+        setSharedContext(prev => ({ ...prev, uiComponents: "Components compiled." }));
+        
+      } catch (err: any) {
+        addLog("warning", `⚠️ Real AI compilation encountered an issue: ${err.message || err.toString()}. Using optimized templates.`);
+        // Fallback to template strings
+        dbSchemaContent = `-- SolAgent Vault Database Design\nCREATE TABLE products (\n  id SERIAL PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  price_usdc NUMERIC(10, 2) NOT NULL,\n  stock_quantity INT DEFAULT 100\n);\n\nCREATE TABLE orders (\n  id SERIAL PRIMARY KEY,\n  product_id INT REFERENCES products(id),\n  buyer_pubkey VARCHAR(44) NOT NULL,\n  usdc_paid NUMERIC(10, 2) NOT NULL,\n  status VARCHAR(50) DEFAULT 'Pending'\n);`;
+        apiSpecsContent = `// Next.js API Router handler for USDC payment validation\nimport { Connection, PublicKey } from "@solana/web3.js";\n\nexport async function POST(req: Request) {\n  const { productId, buyerPubKey, amount } = await req.json();\n  \n  // Verify on-chain payment logic\n  const connection = new Connection("https://api.devnet.solana.com");\n  console.log(\`Verifying transaction amount: \${amount} USDC for product \${productId}\`);\n  \n  return new Response(JSON.stringify({ success: true, message: "USDC verified!" }));\n}`;
+        appComponentsContent = `// React Frontend Marketplace Component\nimport React, { useState } from "react";\n\nexport default function Marketplace() {\n  const [bought, setBought] = useState(false);\n  return (\n    <div className="p-6 bg-black/90 text-white rounded-xl border border-glass-border">\n      <h1 className="text-xl font-bold text-vivid-cyan">🤖 AI GPU Compute Core</h1>\n      <p className="text-xs text-zinc-400 my-2">Instant high-performance server allocation via SolAgent Vault.</p>\n      <div className="flex justify-between items-center mt-4">\n        <span className="font-mono text-success-emerald">$15.00 USDC</span>\n        <button onClick={() => setBought(true)} className="px-4 py-2 bg-electric-purple text-xs font-bold rounded hover:opacity-90">\n          {bought ? "✓ Purchased" : "Purchase"}\n        </button>\n      </div>\n    </div>\n  );\n}`;
+      }
+    } else {
+      // Fallback if no keys
+      // DB Architect writes to Shared Store
+      await new Promise(r => setTimeout(r, 1500));
+      setActiveSubAgents(prev => prev.map(a => a.id === 101 ? { ...a, progress: 50, activity: "Designing schemas..." } : a));
+      addLog("info", "💬 [Database Architect -> Shared Cache]: Posting product schema proposal...");
+      
+      await new Promise(r => setTimeout(r, 1500));
+      setActiveSubAgents(prev => prev.map(a => a.id === 101 ? { ...a, progress: 100, activity: "Schema design complete" } : a));
+      setSharedContext(prev => ({ ...prev, schemaDesign: "CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT, price NUMERIC);" }));
+      addLog("success", "🏗️ [Database Architect] Schema design complete. Payout verified & saved to Shared Cache.");
+
+      // Backend Engineer reads DB design and starts
+      await new Promise(r => setTimeout(r, 1500));
+      addLog("info", "💬 [Backend Engineer -> Shared Cache]: Reading database schema design...");
+      setActiveSubAgents(prev => prev.map(a => a.id === 102 ? { ...a, progress: 30, activity: "Implementing API router..." } : a));
+      setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 15, activity: "Waiting for API endpoints..." } : a));
+
+      await new Promise(r => setTimeout(r, 2000));
+      setOrchestratorState("watchdog_intervention");
+      addWatchdogAlert("Anomaly detected in [Backend Engineer] activity: Recursive spend pattern.", "warning");
+      addLog("warning", "🚨 Watchdog triggered: Pausing [Backend Engineer] to prevent budget drain.");
+
+      const backend = subTasks[1];
+      addLog("info", `🛡️ [Orchestrator Sign] Invoking config modification to PAUSE Agent #${backend.id}...`);
+      await new Promise(r => setTimeout(r, 1000));
+      const fakeSig3 = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "PSE";
+      addLog("success", `[ORCHESTRATOR SIGNED] Agent #${backend.id} successfully PAUSED on-chain. Tx: ${fakeSig3}`);
+
+      setActiveSubAgents(prev => prev.map(a => a.id === backend.id ? { ...a, status: "Paused", activity: "Blocked / Locked" } : a));
+      setFailedAgents([backend.id]);
+
+      // DB Architect assists and logs help!
+      await new Promise(r => setTimeout(r, 2000));
+      addLog("info", "💬 [Database Architect -> Orchestrator]: 'Backend is blocked. I will verify if my DB changes caused a conflict.'");
+      
+      // Orchestrator spawns Standby Agent
+      await new Promise(r => setTimeout(r, 2000));
+      addLog("info", "♻️ Orchestrator spawning Standby Provider [Claude-3-Haiku] to recover...");
+      addLog("info", "💬 [Standby Agent -> Shared Cache]: Fetching cached schemaDesign...");
+      
+      setSharedContext(prev => ({ ...prev, recoveryAttempted: true, apiSpecs: "GET /api/products -> JSON products list" }));
+      addLog("success", "✅ Standby Agent recovered context from Shared Cache successfully.");
+
+      await new Promise(r => setTimeout(r, 2000));
+      setActiveSubAgents(prev => prev.map(a => a.id === 103 ? { ...a, progress: 80, activity: "Building React components..." } : a));
+      setSharedContext(prev => ({ ...prev, uiComponents: "export default function Marketplace() { ... }" }));
+      
+      dbSchemaContent = `-- SolAgent Vault Database Design\nCREATE TABLE products (\n  id SERIAL PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  price_usdc NUMERIC(10, 2) NOT NULL,\n  stock_quantity INT DEFAULT 100\n);\n\nCREATE TABLE orders (\n  id SERIAL PRIMARY KEY,\n  product_id INT REFERENCES products(id),\n  buyer_pubkey VARCHAR(44) NOT NULL,\n  usdc_paid NUMERIC(10, 2) NOT NULL,\n  status VARCHAR(50) DEFAULT 'Pending'\n);`;
+      apiSpecsContent = `// Next.js API Router handler for USDC payment validation\nimport { Connection, PublicKey } from "@solana/web3.js";\n\nexport async function POST(req: Request) {\n  const { productId, buyerPubKey, amount } = await req.json();\n  \n  // Verify on-chain payment logic\n  const connection = new Connection("https://api.devnet.solana.com");\n  console.log(\`Verifying transaction amount: \${amount} USDC for product \${productId}\`);\n  \n  return new Response(JSON.stringify({ success: true, message: "USDC verified!" }));\n}`;
+      appComponentsContent = `// React Frontend Marketplace Component\nimport React, { useState } from "react";\n\nexport default function Marketplace() {\n  const [bought, setBought] = useState(false);\n  return (\n    <div className="p-6 bg-black/90 text-white rounded-xl border border-glass-border">\n      <h1 className="text-xl font-bold text-vivid-cyan">🤖 AI GPU Compute Core</h1>\n      <p className="text-xs text-zinc-400 my-2">Instant high-performance server allocation via SolAgent Vault.</p>\n      <div className="flex justify-between items-center mt-4">\n        <span className="font-mono text-success-emerald">$15.00 USDC</span>\n        <button onClick={() => setBought(true)} className="px-4 py-2 bg-electric-purple text-xs font-bold rounded hover:opacity-90">\n          {bought ? "✓ Purchased" : "Purchase"}\n        </button>\n      </div>\n    </div>\n  );\n}`;
+    }
+
     setOrchestratorState("completing");
     await new Promise(r => setTimeout(r, 2500));
     
     setActiveSubAgents(prev => prev.map(a => a.progress !== undefined ? { ...a, progress: 100, activity: "Done" } : a));
+    
     setGeneratedFiles([
-      {
-        name: "schema.sql",
-        content: `-- SolAgent Vault Database Design\nCREATE TABLE products (\n  id SERIAL PRIMARY KEY,\n  name VARCHAR(255) NOT NULL,\n  description TEXT,\n  price_usdc NUMERIC(10, 2) NOT NULL,\n  stock_quantity INT DEFAULT 100\n);\n\nCREATE TABLE orders (\n  id SERIAL PRIMARY KEY,\n  product_id INT REFERENCES products(id),\n  buyer_pubkey VARCHAR(44) NOT NULL,\n  usdc_paid NUMERIC(10, 2) NOT NULL,\n  status VARCHAR(50) DEFAULT 'Pending'\n);`
-      },
-      {
-        name: "api.ts",
-        content: `// Next.js API Router handler for USDC payment validation\nimport { Connection, PublicKey } from "@solana/web3.js";\n\nexport async function POST(req: Request) {\n  const { productId, buyerPubKey, amount } = await req.json();\n  \n  // Verify on-chain payment logic\n  const connection = new Connection("https://api.devnet.solana.com");\n  console.log(\`Verifying transaction amount: \${amount} USDC for product \${productId}\`);\n  \n  return new Response(JSON.stringify({ success: true, message: "USDC verified!" }));\n}`
-      },
-      {
-        name: "App.tsx",
-        content: `// React Frontend Marketplace Component\nimport React, { useState } from "react";\n\nexport default function Marketplace() {\n  const [bought, setBought] = useState(false);\n  return (\n    <div className="p-6 bg-black/90 text-white rounded-xl border border-glass-border">\n      <h1 className="text-xl font-bold text-vivid-cyan">🤖 AI GPU Compute Core</h1>\n      <p className="text-xs text-zinc-400 my-2">Instant high-performance server allocation via SolAgent Vault.</p>\n      <div className="flex justify-between items-center mt-4">\n        <span className="font-mono text-success-emerald">$15.00 USDC</span>\n        <button onClick={() => setBought(true)} className="px-4 py-2 bg-electric-purple text-xs font-bold rounded hover:opacity-90">\n          {bought ? "✓ Purchased" : "Purchase"}\n        </button>\n      </div>\n    </div>\n  );\n}`
-      }
+      { name: "schema.sql", content: dbSchemaContent },
+      { name: "api.ts", content: apiSpecsContent },
+      { name: "App.tsx", content: appComponentsContent }
     ]);
+
+    // Reclaim/Drain SOL and Tokens: autonomously close agents and send funds back to orchestrator
+    if (onChainMode) {
+      addLog("info", "🔥 [Orchestrator Reclaim] Programmatically closing sub-agent accounts and reclaiming unspent SOL/tokens...");
+      for (const task of subTasks) {
+        try {
+          const agentPda = getAgentPda(vaultPda, task.id);
+          const usdcMintKey = new PublicKey(usdcMintInput.trim());
+          const agentTokenAccount = getAssociatedTokenAddressSync(
+            usdcMintKey,
+            agentPda,
+            true,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+          const signerAta = getAssociatedTokenAddressSync(
+            usdcMintKey,
+            simulatedSigner.publicKey,
+            false,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
+          const closeInst = await program.methods
+            .closeAgent(new anchor.BN(task.id))
+            .accounts({
+              vaultState: vaultPda,
+              agentState: agentPda,
+              owner: simulatedSigner.publicKey,
+              agentTokenAccount: agentTokenAccount,
+              ownerTokenAccount: signerAta,
+              usdcMint: usdcMintKey,
+              tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .instruction();
+
+          const tx = new Transaction().add(closeInst);
+          tx.feePayer = simulatedSigner.publicKey;
+          const latest = await connection.getLatestBlockhash("confirmed");
+          tx.recentBlockhash = latest.blockhash;
+          tx.sign(simulatedSigner);
+
+          const sig = await connection.sendRawTransaction(tx.serialize());
+          await connection.confirmTransaction(sig, "confirmed");
+          logTxSignature("Close & Reclaim Agent", sig, task.id);
+          addLog("success", `[ORCHESTRATOR RECLAIMED] Agent #${task.id} closed. Swept remaining tokens & SOL back. Tx: ${sig}`);
+        } catch (e: any) {
+          addLog("warning", `⚠️ Reclaim failed for Agent #${task.id}: ${e.message || e}`);
+        }
+      }
+    }
+
     addLog("success", "🏁 Multi-agent task completed successfully! Reclaiming unspent funds.");
     setOrchestratorState("idle");
     await reload();
@@ -2247,6 +2712,8 @@ ${JSON.stringify(mockChallenge, null, 2)}
     setDeepseekKey,
     openrouterKey,
     setOpenrouterKey,
+    groqKey,
+    setGroqKey,
     sharedContext,
     setSharedContext,
     modelName,

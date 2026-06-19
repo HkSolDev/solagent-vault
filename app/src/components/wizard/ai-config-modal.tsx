@@ -5,7 +5,7 @@ import React, { useState } from "react";
 interface AiConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  llmProvider: "orchestrator" | "gemini" | "openrouter" | "ollama" | "mock" | "cerebras" | "mistral" | "kimi" | "deepseek";
+  llmProvider: "orchestrator" | "gemini" | "openrouter" | "ollama" | "mock" | "cerebras" | "mistral" | "kimi" | "deepseek" | "groq";
   onProviderSelect: (val: any) => void;
   apiKey: string;
   onApiKeyChange: (val: string) => void;
@@ -21,6 +21,8 @@ interface AiConfigModalProps {
   onDeepseekKeyChange: (val: string) => void;
   openrouterKey: string;
   onOpenrouterKeyChange: (val: string) => void;
+  groqKey: string;
+  onGroqKeyChange: (val: string) => void;
   modelName: string;
   onModelNameChange: (val: string) => void;
   merchantWallet: string;
@@ -51,6 +53,8 @@ export default function AiConfigModal({
   onDeepseekKeyChange,
   openrouterKey,
   onOpenrouterKeyChange,
+  groqKey,
+  onGroqKeyChange,
   modelName,
   onModelNameChange,
   merchantWallet,
@@ -116,6 +120,7 @@ export default function AiConfigModal({
               <option value="cerebras">Cerebras Llama3.1 (Free)</option>
               <option value="gemini">Google Gemini Studio (Free)</option>
               <option value="deepseek">DeepSeek API (Paid)</option>
+              <option value="groq">Groq API (Free Llama3)</option>
               <option value="mistral">Mistral AI API (Paid)</option>
               <option value="kimi">Kimi/Moonshot API (Paid)</option>
               <option value="openrouter">OpenRouter API</option>
@@ -154,6 +159,16 @@ export default function AiConfigModal({
                   value={openrouterKey}
                   onChange={(e) => onOpenrouterKeyChange(e.target.value)}
                   placeholder="Enter OpenRouter API Key"
+                  className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] text-zinc-500 block mb-0.5">Groq Key (Free Path #3)</label>
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={groqKey}
+                  onChange={(e) => onGroqKeyChange(e.target.value)}
+                  placeholder="Enter Groq API Key"
                   className="w-full bg-black/60 border border-glass-border p-1.5 rounded text-[10px] text-white focus:outline-none placeholder-zinc-700"
                 />
               </div>
@@ -197,6 +212,7 @@ export default function AiConfigModal({
                   llmProvider === "mistral" ? mistralKey :
                   llmProvider === "kimi" ? kimiKey :
                   llmProvider === "deepseek" ? deepseekKey :
+                  llmProvider === "groq" ? groqKey :
                   openrouterKey
                 }
                 onChange={(e) => {
@@ -206,6 +222,7 @@ export default function AiConfigModal({
                   else if (llmProvider === "mistral") onMistralKeyChange(val);
                   else if (llmProvider === "kimi") onKimiKeyChange(val);
                   else if (llmProvider === "deepseek") onDeepseekKeyChange(val);
+                  else if (llmProvider === "groq") onGroqKeyChange(val);
                   else onOpenrouterKeyChange(val);
                 }}
                 placeholder={`Enter your ${llmProvider.toUpperCase()} API Key`}

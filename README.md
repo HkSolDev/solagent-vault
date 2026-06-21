@@ -93,4 +93,8 @@ Open [http://localhost:3000](http://localhost:3000) to view your real-time visua
 
 ## 🌐 Live Deployments
 *   **Solana Devnet Program ID:** `C5pqn3tYpivcZiQUhSbXeozSxZQ35P9e7VQTWzvRxr7o`
-*   **Vercel Live Dashboard DApp:** *(Your Vercel URL)*
+
+## 📊 Devnet Tests Verification
+Below is the verification of the complete 10-test suite passing successfully on Solana Devnet:
+
+![Solana Devnet Tests Passing](devnet_tests_screenshot.png)

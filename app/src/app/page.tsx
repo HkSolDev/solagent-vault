@@ -269,6 +269,7 @@ export default function Home() {
 
 function PitchDeckSlider() {
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   const slides = [
     {
@@ -376,7 +377,10 @@ function PitchDeckSlider() {
           </div>
           
           <div className="md:col-span-5 flex flex-col justify-center items-center">
-            <div className="relative group overflow-hidden rounded-xl border border-zinc-850 bg-black max-w-[280px]">
+            <div 
+              onClick={() => setIsZoomed(true)}
+              className="relative group overflow-hidden rounded-xl border border-zinc-850 bg-black max-w-[280px] cursor-zoom-in"
+            >
               <img 
                 src="/devnet_tests_screenshot.png" 
                 alt="Devnet tests proof" 
@@ -451,6 +455,30 @@ function PitchDeckSlider() {
           </button>
         </div>
       </div>
+
+      {isZoomed && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md cursor-zoom-out p-4"
+          onClick={() => setIsZoomed(false)}
+        >
+          <div className="relative max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl">
+            <img 
+              src="/devnet_tests_screenshot.png" 
+              alt="Devnet tests proof enlarged" 
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+            <button 
+              className="absolute top-4 right-4 bg-zinc-900 hover:bg-zinc-850 text-white rounded-full p-2 w-8 h-8 flex items-center justify-center text-xs font-mono border border-zinc-800 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsZoomed(false);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

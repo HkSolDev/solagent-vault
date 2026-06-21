@@ -272,68 +272,62 @@ function PitchDeckSlider() {
 
   const slides = [
     {
-      title: "1. The Paradigm Shift (Problem & Solution)",
-      subtitle: "Why autonomous AI agents need secure on-chain sandbox budgets.",
+      title: "1. The Core Problem & Solution",
+      subtitle: "Why autonomous AI agents need smart on-chain budgets.",
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="glass-panel p-6 rounded-xl border-red-500/20 bg-red-950/5">
             <h4 className="text-red-400 font-mono font-bold text-sm uppercase mb-3 flex items-center gap-1.5">
-              <span>⚠️</span> The Fatal Flaw of AI Hot-Keys
+              <span>⚠️</span> The Problem: AI Hot-Keys
             </h4>
-            <p className="text-xs text-zinc-400 font-mono leading-relaxed mb-4">
-              Traditional AI Agents are pre-funded with raw hot wallet keys or shared API keys. If the agent's logic hits an infinite loop, succumbs to prompt-injection, or the host machine gets hacked:
-            </p>
-            <ul className="text-xs text-zinc-300 font-mono space-y-2 list-disc list-inside">
-              <li>Your entire treasury can be drained instantly.</li>
-              <li>Recursive api calls result in huge cloud bills.</li>
-              <li>Zero on-chain authorization limits.</li>
+            <ul className="text-xs text-zinc-300 font-mono space-y-2 list-none pl-0">
+              <li className="flex items-start gap-2">❌ <strong>Shared Keys:</strong> Risk of total capital drain if hacked.</li>
+              <li className="flex items-start gap-2">❌ <strong>Infinite Loops:</strong> AI bugs causing recursive costly transactions.</li>
+              <li className="flex items-start gap-2">❌ <strong>Prompt Attacks:</strong> Malicious prompt injection hijacking budgets.</li>
             </ul>
           </div>
           <div className="glass-panel p-6 rounded-xl border-emerald-500/20 bg-emerald-950/5">
             <h4 className="text-emerald-400 font-mono font-bold text-sm uppercase mb-3 flex items-center gap-1.5">
-              <span>🛡️</span> The On-Chain Sandbox Vault
+              <span>🛡️</span> The Solution: On-Chain Sandbox
             </h4>
-            <p className="text-xs text-zinc-400 font-mono leading-relaxed mb-4">
-              <strong>SolAgent Vault</strong> isolates capital in a secure, on-chain Program Derived Address (PDA) vault. The AI agent uses a throwaway hot-key containing almost zero funds, and:
-            </p>
-            <ul className="text-xs text-zinc-300 font-mono space-y-2 list-disc list-inside">
-              <li>USDC lies protected in the smart-contract vault.</li>
-              <li>Every spend must pass 5 security validations on-chain.</li>
-              <li>Immediate developer override (tap-to-freeze).</li>
+            <ul className="text-xs text-zinc-300 font-mono space-y-2 list-none pl-0">
+              <li className="flex items-start gap-2">✅ <strong>Isolated PDA Vault:</strong> Capital stays in secure program lockers.</li>
+              <li className="flex items-start gap-2">✅ <strong>Throwaway Signers:</strong> Agent holds almost 0 native funds.</li>
+              <li className="flex items-start gap-2">✅ <strong>On-Chain Safety:</strong> Automated code-level guardrail policy.</li>
             </ul>
           </div>
         </div>
       ),
     },
     {
-      title: "2. The On-Chain Security Hierarchy (Guardrails)",
-      subtitle: "The chronological security validations executed on-chain before a transfer is authorized.",
+      title: "2. The On-Chain Guardrail Hierarchy",
+      subtitle: "Chronological checks executed inside the smart contract before any spend.",
       content: (
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
             {[
-              { num: "01", name: "Active Switch", desc: "Instantly freezes all agent operations when paused by the owner.", color: "border-purple-500/30 text-purple-400" },
-              { num: "02", name: "Allowlist Guard", desc: "Limits outgoing payments only to pre-authorized API provider wallets.", color: "border-cyan-500/30 text-cyan-400" },
-              { num: "03", name: "Single-Call Cap", desc: "Rejects any individual transaction requesting more than the cap.", color: "border-indigo-500/30 text-indigo-400" },
-              { num: "04", name: "Rate-Limit Guard", desc: "Restricts cumulative per-minute spending to stop recursive budget loops.", color: "border-emerald-500/30 text-emerald-400" },
-              { num: "05", name: "Balance Check", desc: "Ensures the isolated PDA vault has sufficient token liquidity.", color: "border-pink-500/30 text-pink-400" },
+              { num: "01", name: "Status Switch", desc: "Freeze agent immediately.", color: "border-purple-500/30 text-purple-400" },
+              { num: "02", name: "Allowlist Guard", desc: "Approved providers only.", color: "border-cyan-500/30 text-cyan-400" },
+              { num: "03", name: "Single-Call Cap", desc: "Limit max spend per transaction.", color: "border-indigo-500/30 text-indigo-400" },
+              { num: "04", name: "Rate-Limit Guard", desc: "Cap cumulative per-minute budget.", color: "border-emerald-500/30 text-emerald-400" },
+              { num: "05", name: "Liquidity Check", desc: "Verify actual vault balance.", color: "border-pink-500/30 text-pink-400" },
             ].map((step, idx) => (
               <div key={idx} className={`glass-panel p-4 rounded-xl border ${step.color} flex flex-col gap-2`}>
-                <div className="text-xs font-mono opacity-60">Step {step.num}</div>
+                <div className="text-xs font-mono opacity-60">Guard {step.num}</div>
                 <div className="text-sm font-bold font-mono tracking-tight">{step.name}</div>
                 <div className="text-[10px] text-zinc-400 font-mono leading-normal">{step.desc}</div>
               </div>
             ))}
           </div>
           <div className="glass-panel p-4 rounded-xl bg-purple-950/10 border-purple-500/20 text-xs font-mono text-zinc-400 flex items-center justify-between mt-2">
-            <span>💡 <strong>Architectural Note:</strong> Guards run in strict order. A downstream guard (e.g. Rate-Limit) will never be reached if an upstream guard (e.g. Single-Call Cap) fails.</span>
+            <span>💡 <strong>Pitch Tip:</strong> We test strict ordering. Violating Guard 3 (Single-Call Cap) fails before Guard 4 is ever reached!</span>
           </div>
         </div>
       ),
     },
     {
-      title: "3. Devnet Verification & Edge Cases",
-      subtitle: "10 passing integration tests verifying happy paths and strict edge case reverts.",
+      title: "3. Devnet Tests & Edge Cases",
+      subtitle: "10 passing integration tests verifying happy paths and strict security failures.",
       content: (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-7 flex flex-col gap-3 font-mono">
@@ -345,13 +339,13 @@ function PitchDeckSlider() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-xs text-emerald-400 font-bold mb-2 flex items-center gap-1">
-                    <span>🟢</span> Happy Path Tests (6)
+                    <span>🟢</span> Happy Path (6)
                   </div>
-                  <ul className="text-[11px] text-zinc-400 space-y-1">
+                  <ul className="text-[11px] text-zinc-400 space-y-1 list-none pl-0">
                     <li>✓ Initialize Master Vault</li>
                     <li>✓ Create & Fund Agent PDA</li>
                     <li>✓ Deposit USDC to PDA</li>
-                    <li>✓ Authorized Spend Action</li>
+                    <li>✓ Spend to Provider Wallet</li>
                     <li>✓ Withdraw Funds to Owner</li>
                     <li>✓ Close Agent & Sweep Rent</li>
                   </ul>
@@ -360,7 +354,7 @@ function PitchDeckSlider() {
                   <div className="text-xs text-cyan-400 font-bold mb-2 flex items-center gap-1">
                     <span>🛡️</span> Security Edge Cases (4)
                   </div>
-                  <ul className="text-[11px] text-zinc-400 space-y-1">
+                  <ul className="text-[11px] text-zinc-400 space-y-1 list-none pl-0">
                     <li>✓ Revert: Exceeds Single-Call Cap</li>
                     <li>✓ Revert: Exceeds Rate-Limit</li>
                     <li>✓ Revert: Unauthorized Recipient</li>
@@ -390,7 +384,7 @@ function PitchDeckSlider() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex items-end justify-center p-3">
                 <span className="text-[10px] font-mono text-emerald-400 font-bold bg-zinc-900/90 px-3 py-1 rounded-full border border-emerald-500/20">
-                  ✓ 10 Tests Passing on Devnet
+                  ✓ 10 Tests Passing
                 </span>
               </div>
             </div>

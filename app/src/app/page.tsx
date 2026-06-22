@@ -92,7 +92,7 @@ export default function Home() {
               href="#pitch-deck" 
               className="px-8 py-3.5 rounded-lg font-mono text-sm font-semibold border border-electric-purple/30 bg-electric-purple/5 hover:bg-electric-purple/10 transition-all text-purple-300 flex items-center gap-2 cursor-pointer"
             >
-              ⚡ 2-Minute Demo Slides
+              ⚡ View Presentation Slides
             </a>
             <a 
               href="#how-it-works" 
@@ -106,8 +106,7 @@ export default function Home() {
           <section id="pitch-deck" className="w-full max-w-5xl scroll-mt-24 mb-24 text-left">
             <div className="border-l-2 border-electric-purple pl-4 mb-8">
               <h2 className="text-2xl font-bold font-mono text-white tracking-tight uppercase flex items-center gap-2">
-                <span>⚡ 2-Minute Pitch Presentation Deck</span>
-                <span className="text-xs font-normal text-zinc-400 normal-case bg-zinc-800/80 px-2 py-0.5 rounded-full">Graduation Exam Mode</span>
+                <span>⚡ Project Presentation Slides</span>
               </h2>
               <p className="text-xs text-zinc-400 font-mono mt-1">
                 One unified screen detailing the Problem, Security Guardrail Hierarchy, and passing Edge-Case tests.

@@ -39,12 +39,14 @@ export default function AgentListCard({
         <div className="flex items-center gap-3">
           <span
             className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
-              agent.status === "Active"
+              (agent.status === "Active" && agent.balance > 0)
                 ? "bg-success-emerald/10 border-success-emerald/20 text-success-emerald"
+                : agent.balance <= 0
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
                 : "bg-emergency-red/10 border-emergency-red/20 text-emergency-red"
             }`}
           >
-            {agent.status}
+            {agent.status === "Active" && agent.balance <= 0 ? "Unfunded" : agent.status}
           </span>
           <button
             onClick={(e) => {

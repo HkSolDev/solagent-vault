@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useAgentState, OnChainAgent } from "./use-agent-state";
 import { useAnchorProgram } from "./use-anchor-program";
-import { Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, SystemProgram } from "@solana/web3.js";
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, SendTransactionError, Transaction, SystemProgram } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import {
   TOKEN_PROGRAM_ID,
@@ -13,6 +13,7 @@ import {
   createAssociatedTokenAccountInstruction,
   createInitializeMintInstruction,
   createMintToInstruction,
+  getMint,
   MINT_SIZE,
 } from "@solana/spl-token";
 
@@ -22,7 +23,43 @@ interface LogLine {
   message: string;
 }
 
+export interface TxHistoryItem {
+  type: string;
+  id?: number;
+  signature?: string;
+  timestamp: number;
+  serverLabel?: string;
+  mode: "real" | "sim";
+  status: "confirmed" | "simulated" | "failed";
+  balanceBefore?: number;
+  balanceAfter?: number;
+  delta?: number;
+  message?: string;
+}
+
+type LlmProvider = "gemini" | "openrouter" | "ollama" | "mock" | "auto";
+
+interface DataFeedItem {
+  timestamp: number;
+  agentId: number;
+  feedType: string;
+  payload: string;
+  cost: number;
+  size: number;
+  serverLabel: string;
+  providerLabel: LlmProvider;
+}
+
+const SERVER_POOLS: Record<Exclude<LlmProvider, "auto">, string[]> = {
+  openrouter: ["OpenRouter Gateway", "DeepSeek Edge Node", "Mimo Router", "Anthropic Relay"],
+  gemini: ["Gemini Primary", "Gemini Flash Region-A", "Gemini Flash Region-B", "Vertex Relay"],
+  ollama: ["Local Ollama Node", "GPU Box A", "GPU Box B", "Inference Edge"],
+  mock: ["Simulation Node"],
+};
+
 export function useSimulatorState() {
+  const AUTO_FUND_NEW_AGENT_TOKENS = "1000000.0";
+
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
   const { connection } = useConnection();
@@ -43,11 +80,11 @@ export function useSimulatorState() {
   const [solSeedInput, setSolSeedInput] = useState("0.05");
 
   // Interaction inputs
-  const [depositAmount, setDepositAmount] = useState("1000.0");
+  const [depositAmount, setDepositAmount] = useState("1000000.0");
   const [spendAmount, setSpendAmount] = useState("1.5");
 
   // Multi-LLM solver configurations
-  const [llmProvider, setLlmProvider] = useState<"gemini" | "openrouter" | "ollama" | "mock">("openrouter");
+  const [llmProvider, setLlmProvider] = useState<LlmProvider>("auto");
   const [apiKey, setApiKey] = useState(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "");
   const [modelName, setModelName] = useState(process.env.NEXT_PUBLIC_MODEL_NAME || "xiaomi/mimo-v2.5");
 
@@ -87,12 +124,13 @@ export function useSimulatorState() {
   const [autoRunning, setAutoRunning] = useState(false);
   const [autopilotStepName, setAutopilotStepName] = useState("");
   const [stepPercent, setStepPercent] = useState(0);
+  const [simulationMode, setSimulationMode] = useState(true);
 
   // Revert Error overlay state
   const [errorPopup, setErrorPopup] = useState<{ title: string; message: string; code?: string } | null>(null);
 
   // Capstone Masterclass: On-Chain Transaction Signature History for Solana Explorer links
-  const [txHistory, setTxHistory] = useState<Array<{ type: string; id?: number; signature: string; timestamp: number }>>([]);
+  const [txHistory, setTxHistory] = useState<TxHistoryItem[]>([]);
 
   // Capstone Masterclass: LLM Cognitive Audit & Telemetry parameters per agent ID
   const [cognitiveTelemetry, setCognitiveTelemetry] = useState<Record<number, {
@@ -106,18 +144,11 @@ export function useSimulatorState() {
   }>>({});
 
   // Capstone Masterclass: Decrypted Premium Data Feeds from Server Agent
-  const [dataFeeds, setDataFeeds] = useState<Array<{
-    timestamp: number;
-    agentId: number;
-    feedType: string;
-    payload: string;
-    cost: number;
-    size: number;
-  }>>([]);
+  const [dataFeeds, setDataFeeds] = useState<DataFeedItem[]>([]);
 
-  // Helper to log transaction signatures securely and store in state
-  const logTxSignature = useCallback((type: string, signature: string, agentId?: number) => {
-    const newEvent = { type, id: agentId, signature, timestamp: Date.now() };
+  // Helper to log tx history entries and store in state
+  const recordTxEvent = useCallback((event: Omit<TxHistoryItem, "timestamp">) => {
+    const newEvent: TxHistoryItem = { ...event, timestamp: Date.now() };
     setTxHistory(prev => {
       const updated = [newEvent, ...prev].slice(0, 50);
       try {
@@ -127,8 +158,15 @@ export function useSimulatorState() {
     });
   }, []);
 
+  const pickServerLabel = useCallback((provider: Exclude<LlmProvider, "auto">, agentId: number) => {
+    const pool = SERVER_POOLS[provider] ?? SERVER_POOLS.mock;
+    if (pool.length === 0) return "Unknown Server";
+    const offset = Math.floor(Math.random() * pool.length);
+    return pool[(agentId + offset) % pool.length];
+  }, []);
+
   // Helper to log decrypted premium data streams from the server agent
-  const logDataFeed = useCallback((agentId: number, selectedPayload: string) => {
+  const logDataFeed = useCallback((agentId: number, selectedPayload: string, serverLabel: string, providerLabel: LlmProvider) => {
     const newFeedItem = {
       timestamp: Date.now(),
       agentId,
@@ -141,6 +179,8 @@ export function useSimulatorState() {
       payload: selectedPayload,
       cost: parseFloat(spendAmount),
       size: selectedPayload.length,
+      serverLabel,
+      providerLabel,
     };
     setDataFeeds(prev => {
       const updated = [newFeedItem, ...prev].slice(0, 50);
@@ -161,6 +201,38 @@ export function useSimulatorState() {
       },
     ]);
   }, []);
+
+  const sleep = useCallback((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)), []);
+  const isRateLimitErr = useCallback((err: unknown) => {
+    const msg = String((err as any)?.message || err || "").toLowerCase();
+    return msg.includes("429") || msg.includes("rate limit");
+  }, []);
+
+  const getLatestBlockhashWithRetry = useCallback(async () => {
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await connection.getLatestBlockhash("confirmed");
+      } catch (err) {
+        lastErr = err;
+        if (!isRateLimitErr(err) || attempt === 3) throw err;
+        await sleep(500 * (attempt + 1));
+      }
+    }
+    throw lastErr;
+  }, [connection, isRateLimitErr, sleep]);
+
+  const appendSendTxLogs = useCallback(async (err: unknown, tag: string) => {
+    if (!(err instanceof SendTransactionError)) return;
+    try {
+      const logs = await err.getLogs(connection);
+      if (logs && logs.length > 0) {
+        addLog("error", `🧾 ${tag} logs: ${logs.slice(0, 3).join(" | ")}`);
+      }
+    } catch {
+      // Ignore log retrieval failures and keep original error path.
+    }
+  }, [connection, addLog]);
 
   // Automatically fetch connected wallet SOL balance
   const fetchSolBalance = useCallback(async () => {
@@ -192,7 +264,7 @@ export function useSimulatorState() {
 
     try {
       const sig = await connection.requestAirdrop(publicKey, 1 * LAMPORTS_PER_SOL);
-      const latestBlockHash = await connection.getLatestBlockhash("confirmed");
+      const latestBlockHash = await getLatestBlockhashWithRetry();
       await connection.confirmTransaction(
         {
           signature: sig,
@@ -249,7 +321,9 @@ export function useSimulatorState() {
 
       // Load saved credentials
       const savedProvider = localStorage.getItem("solagent_llm_provider");
-      if (savedProvider) setLlmProvider(savedProvider as any);
+      if (savedProvider && ["gemini", "openrouter", "ollama", "mock", "auto"].includes(savedProvider)) {
+        setLlmProvider(savedProvider as LlmProvider);
+      }
 
       const savedApiKey = localStorage.getItem("solagent_api_key");
       if (savedApiKey) setApiKey(savedApiKey);
@@ -263,17 +337,51 @@ export function useSimulatorState() {
       const savedMint = localStorage.getItem("solagent_usdc_mint");
       if (savedMint) setUsdcMintInput(savedMint);
 
+      const savedSimulationMode = localStorage.getItem("solagent_simulation_mode");
+      if (savedSimulationMode !== null) {
+        setSimulationMode(savedSimulationMode === "true");
+      }
+
       const savedHistory = localStorage.getItem("solagent_tx_history");
       if (savedHistory) {
         try {
-          setTxHistory(JSON.parse(savedHistory));
+          const parsed = JSON.parse(savedHistory);
+          const normalized: TxHistoryItem[] = Array.isArray(parsed)
+            ? parsed.map((item: any) => ({
+                type: item.type || "Unknown",
+                id: item.id,
+                signature: item.signature,
+                timestamp: item.timestamp || Date.now(),
+                serverLabel: item.serverLabel,
+                mode: item.mode || (item.signature ? "real" : "sim"),
+                status: item.status || (item.signature ? "confirmed" : "simulated"),
+                balanceBefore: item.balanceBefore,
+                balanceAfter: item.balanceAfter,
+                delta: item.delta,
+                message: item.message,
+              }))
+            : [];
+          setTxHistory(normalized);
         } catch (e) {}
       }
 
       const savedFeeds = localStorage.getItem("solagent_data_feeds");
       if (savedFeeds) {
         try {
-          setDataFeeds(JSON.parse(savedFeeds));
+          const parsed = JSON.parse(savedFeeds);
+          if (Array.isArray(parsed)) {
+            const normalized = parsed.map((feed: any) => ({
+              timestamp: feed.timestamp || Date.now(),
+              agentId: feed.agentId || 0,
+              feedType: feed.feedType || "Premium Data Feed",
+              payload: feed.payload || "",
+              cost: typeof feed.cost === "number" ? feed.cost : 0,
+              size: typeof feed.size === "number" ? feed.size : String(feed.payload || "").length,
+              serverLabel: feed.serverLabel || "Unknown Server",
+              providerLabel: feed.providerLabel || "mock",
+            }));
+            setDataFeeds(normalized);
+          }
         } catch (e) {}
       }
 
@@ -282,43 +390,6 @@ export function useSimulatorState() {
         try {
           setCognitiveTelemetry(JSON.parse(savedTelemetry));
         } catch (e) {}
-      } else {
-        const initialTelemetry = {
-          1: {
-            latency: 1420,
-            promptTokens: 412,
-            completionTokens: 124,
-            systemInstruction: "You are an autonomous AI DeFi analysis agent registered on the Solana network. Your goal is to request price feed quotes and predict market movements.",
-            userPrompt: "Analyze the current SOL/USDC market trends and execute the premium predictions route data decryption from Raydium CLMM optimal liquidity paths.",
-            modelOutput: JSON.stringify({
-              tool: "spend",
-              arguments: {
-                amount: 125000,
-                agentId: 1,
-                providerWallet: "HN7cABujF476pA3b8eDF78fGkLaQ56u9qRzYvK6pWmxB"
-              }
-            }, null, 2),
-            modelName: "gemini-1.5-flash"
-          },
-          2: {
-            latency: 1850,
-            promptTokens: 532,
-            completionTokens: 145,
-            systemInstruction: "You are an autonomous secure multi-signature auditor agent. Your task is to verify thresholds and request validation validation logs.",
-            userPrompt: "Audit the multisig threshold and request validation proof validation checks from the program registry provider paywall.",
-            modelOutput: JSON.stringify({
-              tool: "spend",
-              arguments: {
-                amount: 250000,
-                agentId: 2,
-                providerWallet: "HN7cABujF476pA3b8eDF78fGkLaQ56u9qRzYvK6pWmxB"
-              }
-            }, null, 2),
-            modelName: "mock-cognitive-v2"
-          }
-        };
-        setCognitiveTelemetry(initialTelemetry);
-        localStorage.setItem("solagent_cognitive_telemetry", JSON.stringify(initialTelemetry));
       }
     }
   }, []);
@@ -329,6 +400,14 @@ export function useSimulatorState() {
       localStorage.setItem("solagent_cognitive_telemetry", JSON.stringify(cognitiveTelemetry));
     }
   }, [cognitiveTelemetry]);
+
+  useEffect(() => {
+    localStorage.setItem("solagent_llm_provider", llmProvider);
+  }, [llmProvider]);
+
+  useEffect(() => {
+    localStorage.setItem("solagent_simulation_mode", String(simulationMode));
+  }, [simulationMode]);
 
   // Determine active step based on progress to guide the user sequentially
   useEffect(() => {
@@ -369,6 +448,9 @@ export function useSimulatorState() {
     } else if (msg.includes("custom program error: 0x0") || msg.includes("already in use")) {
       msg = "The Agent ID already exists or the PDA account has already been registered on-chain!";
       code = "0x0 (AccountAlreadyExists)";
+    } else if (msg.includes("IncorrectProgramId") || msg.includes("incorrect program id for instruction")) {
+      msg = "Token program mismatch detected. This app currently supports classic SPL Token mints (Tokenkeg...) only. Use the default devnet USDC mint or the custom mint created in Step 3.";
+      code = "TokenProgramMismatch";
     }
 
     setErrorPopup({ title, message: msg, code });
@@ -384,6 +466,23 @@ export function useSimulatorState() {
       program.programId
     )[0];
   }, [program]);
+
+  const resolveSupportedMint = useCallback(async () => {
+    const mintKey = new PublicKey(usdcMintInput.trim());
+    const mintInfo = await connection.getAccountInfo(mintKey);
+
+    if (!mintInfo) {
+      throw new Error("Configured mint does not exist on this cluster.");
+    }
+
+    if (!mintInfo.owner.equals(TOKEN_PROGRAM_ID)) {
+      throw new Error(
+        `Unsupported token program for mint ${mintKey.toBase58()}. Expected ${TOKEN_PROGRAM_ID.toBase58()} but got ${mintInfo.owner.toBase58()}.`
+      );
+    }
+
+    return mintKey;
+  }, [connection, usdcMintInput]);
 
   // Step 2: Initialize Registry
   const handleInitVault = async () => {
@@ -406,20 +505,28 @@ export function useSimulatorState() {
     setActionLoading(true);
     const id = parseInt(agentIdInput);
 
-    const agentExists = agents.some((a) => a.id === id);
-    if (agentExists) {
-      const errorMsg = `Agent #${id} has already been registered. Automatically bumping numerical ID...`;
-      addLog("error", `[BLOCKED] Agent #${id} has already been registered. Skipping duplicate creation...`);
-      setActionLoading(false);
-      triggerErrorPopup("Agent ID Already Spawned", errorMsg);
-      return;
-    }
-
     addLog("info", `Registering Agent #${id} with custom rate-limits on-chain...`);
 
     try {
       const vaultPda = getVaultPda(publicKey);
       const agentPda = getAgentPda(vaultPda, id);
+      const existingAgentInfo = await connection.getAccountInfo(agentPda);
+      if (existingAgentInfo) {
+        let suggestedId = id + 1;
+        for (let candidate = id + 1; candidate <= id + 50; candidate++) {
+          const candidatePda = getAgentPda(vaultPda, candidate);
+          const candidateInfo = await connection.getAccountInfo(candidatePda);
+          if (!candidateInfo) {
+            suggestedId = candidate;
+            break;
+          }
+        }
+        setAgentIdInput(String(suggestedId));
+        const errorMsg = `Agent #${id} PDA already exists on-chain. Switched input to #${suggestedId}.`;
+        addLog("error", `[BLOCKED] Agent #${id} already exists. Try Agent #${suggestedId}.`);
+        triggerErrorPopup("Agent ID Already Exists", errorMsg);
+        return;
+      }
 
       const maxCallLamports = new anchor.BN(parseFloat(maxCallInput) * 1_000_000);
       const maxMinuteLamports = new anchor.BN(parseFloat(maxMinuteInput) * 1_000_000);
@@ -445,10 +552,35 @@ export function useSimulatorState() {
         })
         .rpc();
 
-      logTxSignature("Spawn Agent", signature, id);
+      recordTxEvent({
+        type: "Spawn Agent",
+        id,
+        signature,
+        mode: "real",
+        status: "confirmed",
+      });
       addLog("success", `Agent #${id} PDA successfully spawned on-chain! Spends delegated to hotkey. ✅`);
       setActiveTab(id);
-      await reload();
+      // Avoid an extra immediate reload to reduce RPC burst pressure.
+
+      // Demo-speed onboarding: auto-fund every freshly spawned agent.
+      addLog("info", `Auto-funding Agent #${id} with ${AUTO_FUND_NEW_AGENT_TOKENS} tokens for immediate run readiness...`);
+      try {
+        await handleDeposit(id, AUTO_FUND_NEW_AGENT_TOKENS);
+      } catch (fundErr: any) {
+        if (isRateLimitErr(fundErr)) {
+          addLog("warning", `RPC rate-limited while auto-funding Agent #${id}. Retrying once in 2s...`);
+          await sleep(2000);
+          try {
+            await handleDeposit(id, AUTO_FUND_NEW_AGENT_TOKENS);
+            return;
+          } catch (retryErr: any) {
+            addLog("warning", `Agent #${id} created, auto-fund retry failed: ${retryErr?.message || retryErr}`);
+            return;
+          }
+        }
+        addLog("warning", `Agent #${id} created, but auto-fund failed: ${fundErr?.message || fundErr}`);
+      }
     } catch (err: any) {
       console.error(err);
       addLog("error", `Agent registration failed: ${err.message || err}`);
@@ -508,13 +640,14 @@ export function useSimulatorState() {
       );
 
       transaction.add(
-        createMintToInstruction(mintKeypair.publicKey, ownerTokenAccount, publicKey, 1_000_000_000) // 1,000 tokens
+        createMintToInstruction(mintKeypair.publicKey, ownerTokenAccount, publicKey, 1_000_000_000_000) // 1,000,000 tokens
       );
 
-      const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+      const latestBlockhash = await getLatestBlockhashWithRetry();
       transaction.recentBlockhash = latestBlockhash.blockhash;
       transaction.feePayer = publicKey;
 
+      // Partially sign the transaction with the mint keypair
       transaction.partialSign(mintKeypair);
 
       addLog("info", "🔑 Please sign the token minting transaction in your wallet standard modal...");
@@ -522,7 +655,12 @@ export function useSimulatorState() {
       addLog("info", "⚙️ Confirming block transactions...");
       await connection.confirmTransaction(signature, "confirmed");
 
-      logTxSignature("Create Mint", signature);
+      recordTxEvent({
+        type: "Create Mint",
+        signature,
+        mode: "real",
+        status: "confirmed",
+      });
       addLog("success", `🎉 Custom SOLAGNT Token Mint successfully deployed! Address: ${mintKeypair.publicKey.toBase58()}`);
       setUsdcMintInput(mintKeypair.publicKey.toBase58());
       localStorage.setItem("solagent_usdc_mint", mintKeypair.publicKey.toBase58());
@@ -548,7 +686,7 @@ export function useSimulatorState() {
     try {
       const vaultPda = getVaultPda(publicKey);
       const agentPda = getAgentPda(vaultPda, id);
-      const usdcMintKey = new PublicKey(usdcMintInput.trim());
+      const usdcMintKey = await resolveSupportedMint();
 
       const agentTokenAccount = getAssociatedTokenAddressSync(
         usdcMintKey,
@@ -588,7 +726,15 @@ export function useSimulatorState() {
         }
       }
 
-      if (needsInit || needsMint) {
+      let isAuthority = false;
+      try {
+        const mintInfoDetails = await getMint(connection, usdcMintKey);
+        isAuthority = mintInfoDetails.mintAuthority?.equals(publicKey) || false;
+      } catch (e) {
+        // Assume not the authority if we cannot fetch details (e.g. rate limit / network error)
+      }
+
+      if (needsInit || (needsMint && isAuthority)) {
         const tx = new Transaction();
         if (needsInit) {
           addLog("info", "🛠️ Your Wallet Token Account is not initialized. Spawning ATA on-chain...");
@@ -604,8 +750,8 @@ export function useSimulatorState() {
           );
         }
 
-        if (needsMint) {
-          const mintAmt = depositValBigInt > BigInt("1000000000") ? depositValBigInt * BigInt(2) : BigInt("1000000000");
+        if (needsMint && isAuthority) {
+          const mintAmt = depositValBigInt > BigInt("1000000000000") ? depositValBigInt * BigInt(2) : BigInt("1000000000000");
           addLog("info", `🛠️ Minting additional custom tokens to your wallet (${Number(mintAmt) / 1_000_000} SOLAGNT)...`);
           tx.add(
             createMintToInstruction(
@@ -617,7 +763,7 @@ export function useSimulatorState() {
           );
         }
 
-        const latest = await connection.getLatestBlockhash("confirmed");
+        const latest = await getLatestBlockhashWithRetry();
         tx.recentBlockhash = latest.blockhash;
         tx.feePayer = publicKey;
 
@@ -625,8 +771,15 @@ export function useSimulatorState() {
         const signature = await wallet.sendTransaction(tx, connection);
         addLog("info", "⚙️ Confirming custom token funding...");
         await connection.confirmTransaction(signature, "confirmed");
-        logTxSignature("Setup Wallet ATA", signature);
-        addLog("success", "✅ Wallet Associated Token Account successfully setup and funded!");
+        recordTxEvent({
+          type: "Setup Wallet ATA",
+          signature,
+          mode: "real",
+          status: "confirmed",
+        });
+        addLog("success", "✅ Wallet Associated Token Account successfully setup!");
+      } else if (needsMint && !isAuthority) {
+        addLog("warning", "⚠️ Wallet is not the mint authority. Skipping faucet auto-minting (ensure your wallet holds pre-existing tokens).");
       }
 
       addLog("info", "🔑 Confirm the deposit instruction in your wallet modal...");
@@ -646,7 +799,18 @@ export function useSimulatorState() {
         })
         .rpc();
 
-      logTxSignature("Deposit Agent Vault", signature, id);
+      const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+      const delta = parseFloat(amountVal);
+      recordTxEvent({
+        type: "Deposit Agent Vault",
+        id,
+        signature,
+        mode: "real",
+        status: "confirmed",
+        balanceBefore: beforeBalance,
+        balanceAfter: beforeBalance + delta,
+        delta,
+      });
       addLog("info", "⚙️ Awaiting Devnet block verification...");
       addLog("success", `Deposited $${amountVal} SOLAGNT into Agent #${id} Vault on-chain! 🎉`);
       await reload();
@@ -654,11 +818,44 @@ export function useSimulatorState() {
       const errMsg = err?.message || err?.toString() || "";
       if (errMsg.includes("rejected") || errMsg.includes("User rejected")) {
         addLog("warning", "❌ Signature cancelled: You rejected the request in your wallet.");
+        recordTxEvent({
+          type: "Deposit Agent Vault",
+          id,
+          mode: simulationMode ? "sim" : "real",
+          status: "failed",
+          message: errMsg,
+        });
         return;
       }
+
+      if (!simulationMode) {
+        addLog("error", `❌ Real mode: deposit failed on-chain (${errMsg}).`);
+        recordTxEvent({
+          type: "Deposit Agent Vault",
+          id,
+          mode: "real",
+          status: "failed",
+          message: errMsg,
+        });
+        triggerErrorPopup("Deposit Failed (Real Mode)", err);
+        return;
+      }
+
       console.warn("On-chain token deposit rejected, falling back to simulated confirmation...", err);
-      addLog("warning", "⚠️ Real token balance missing. Simulating deposit confirmation...");
+      addLog("warning", "⚠️ Simulation Mode: on-chain deposit failed, recording simulated confirmation.");
       setTimeout(async () => {
+        const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+        const delta = parseFloat(amountVal);
+        recordTxEvent({
+          type: "Deposit Agent Vault",
+          id,
+          mode: "sim",
+          status: "simulated",
+          balanceBefore: beforeBalance,
+          balanceAfter: beforeBalance + delta,
+          delta,
+          message: errMsg,
+        });
         addLog("success", `Successfully simulated deposit of $${amountVal} USDC into Agent #${id} Vault!`);
         await reload();
       }, 1000);
@@ -676,7 +873,7 @@ export function useSimulatorState() {
     try {
       const vaultPda = getVaultPda(publicKey);
       const agentPda = getAgentPda(vaultPda, id);
-      const usdcMintKey = new PublicKey(usdcMintInput.trim());
+      const usdcMintKey = await resolveSupportedMint();
 
       const agentTokenAccount = getAssociatedTokenAddressSync(
         usdcMintKey,
@@ -710,18 +907,62 @@ export function useSimulatorState() {
         })
         .rpc();
 
-      logTxSignature("Withdraw Vault", signature, id);
+      const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+      const delta = -parseFloat(amountStr);
+      recordTxEvent({
+        type: "Withdraw Vault",
+        id,
+        signature,
+        mode: "real",
+        status: "confirmed",
+        balanceBefore: beforeBalance,
+        balanceAfter: Math.max(0, beforeBalance + delta),
+        delta,
+      });
       addLog("success", `Withdrew $${amountStr} custom tokens successfully back to your wallet! ✅`);
       await reload();
     } catch (err: any) {
       const errMsg = err?.message || err?.toString() || "";
       if (errMsg.includes("rejected") || errMsg.includes("User rejected")) {
         addLog("warning", "❌ Signature cancelled: You rejected the request in your wallet.");
+        recordTxEvent({
+          type: "Withdraw Vault",
+          id,
+          mode: simulationMode ? "sim" : "real",
+          status: "failed",
+          message: errMsg,
+        });
         return;
       }
+
+      if (!simulationMode) {
+        addLog("error", `❌ Real mode: withdraw failed on-chain (${errMsg}).`);
+        recordTxEvent({
+          type: "Withdraw Vault",
+          id,
+          mode: "real",
+          status: "failed",
+          message: errMsg,
+        });
+        triggerErrorPopup("Withdraw Failed (Real Mode)", err);
+        return;
+      }
+
       console.warn("On-chain withdraw rejected, simulating drain confirmation...", err);
-      addLog("warning", "⚠️ On-chain withdraw rejected. Simulating account balance drainage...");
+      addLog("warning", "⚠️ Simulation Mode: on-chain withdraw rejected, simulating account drainage.");
       setTimeout(async () => {
+        const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+        const delta = -parseFloat(amountStr);
+        recordTxEvent({
+          type: "Withdraw Vault",
+          id,
+          mode: "sim",
+          status: "simulated",
+          balanceBefore: beforeBalance,
+          balanceAfter: Math.max(0, beforeBalance + delta),
+          delta,
+          message: errMsg,
+        });
         addLog("success", `Successfully simulated vault drainage of $${amountStr} tokens from Agent #${id}!`);
         await reload();
       }, 1000);
@@ -739,7 +980,7 @@ export function useSimulatorState() {
     try {
       const vaultPda = getVaultPda(publicKey);
       const agentPda = getAgentPda(vaultPda, id);
-      const usdcMintKey = new PublicKey(usdcMintInput.trim());
+      const usdcMintKey = await resolveSupportedMint();
 
       const agentTokenAccount = getAssociatedTokenAddressSync(
         usdcMintKey,
@@ -772,13 +1013,48 @@ export function useSimulatorState() {
         })
         .rpc();
 
-      logTxSignature("Decommission Agent", signature, id);
+      const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+      recordTxEvent({
+        type: "Decommission Agent",
+        id,
+        signature,
+        mode: "real",
+        status: "confirmed",
+        balanceBefore: beforeBalance,
+        balanceAfter: 0,
+        delta: -beforeBalance,
+      });
       addLog("success", `Agent #${id} PDA successfully closed! Rent SOL refunded to your wallet. 🗑️`);
       await reload();
     } catch (err: any) {
+      const errMsg = err?.message || err?.toString() || "";
+      if (!simulationMode) {
+        addLog("error", `❌ Real mode: close agent failed on-chain (${errMsg}).`);
+        recordTxEvent({
+          type: "Decommission Agent",
+          id,
+          mode: "real",
+          status: "failed",
+          message: errMsg,
+        });
+        triggerErrorPopup("Close Agent Failed (Real Mode)", err);
+        return;
+      }
+
       console.warn("On-chain close rejected, simulating account de-registration...", err);
-      addLog("warning", "⚠️ On-chain close instruction rejected. Simulating PDA de-registration...");
+      addLog("warning", "⚠️ Simulation Mode: on-chain close rejected, simulating de-registration.");
       setTimeout(async () => {
+        const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+        recordTxEvent({
+          type: "Decommission Agent",
+          id,
+          mode: "sim",
+          status: "simulated",
+          balanceBefore: beforeBalance,
+          balanceAfter: 0,
+          delta: -beforeBalance,
+          message: errMsg,
+        });
         addLog("success", `Successfully de-registered and closed Agent #${id} PDA state account!`);
         await reload();
       }, 1000);
@@ -799,12 +1075,24 @@ export function useSimulatorState() {
     addLog("info", `Deleting all ${agents.length} agents...`);
 
     try {
-      for (const agent of agents) {
-        addLog("info", `Deleting Agent #${agent.id} PDA...`);
-        const vaultPda = getVaultPda(publicKey);
-        const agentPda = getAgentPda(vaultPda, agent.id);
-        const usdcMintKey = new PublicKey(usdcMintInput.trim());
+      const vaultPda = getVaultPda(publicKey);
+      const usdcMintKey = await resolveSupportedMint();
+      const ownerTokenAccount = getAssociatedTokenAddressSync(
+        usdcMintKey,
+        publicKey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
 
+      // Solana transaction size limits prevent deleting hundreds of PDAs in one tx.
+      // We batch instructions so wallet can sign all txs in one approval flow where supported.
+      const CLOSE_ALL_INSTRUCTIONS_PER_TX = 4;
+      const instructionGroups: Array<Array<{ agent: OnChainAgent; ix: anchor.web3.TransactionInstruction }>> = [];
+      let currentGroup: Array<{ agent: OnChainAgent; ix: anchor.web3.TransactionInstruction }> = [];
+
+      for (const agent of agents) {
+        const agentPda = getAgentPda(vaultPda, agent.id);
         const agentTokenAccount = getAssociatedTokenAddressSync(
           usdcMintKey,
           agentPda,
@@ -813,40 +1101,116 @@ export function useSimulatorState() {
           ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        const ownerTokenAccount = getAssociatedTokenAddressSync(
-          usdcMintKey,
-          publicKey,
-          false,
-          TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID
-        );
+        const ix = await program.methods
+          .closeAgent(new anchor.BN(agent.id))
+          .accounts({
+            vaultState: vaultPda,
+            agentState: agentPda,
+            owner: publicKey,
+            agentTokenAccount,
+            ownerTokenAccount,
+            usdcMint: usdcMintKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .instruction();
 
-        try {
-          await program.methods
-            .closeAgent(new anchor.BN(agent.id))
-            .accounts({
-              vaultState: vaultPda,
-              agentState: agentPda,
-              owner: publicKey,
-              agentTokenAccount: agentTokenAccount,
-              ownerTokenAccount: ownerTokenAccount,
-              usdcMint: usdcMintKey,
-              tokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .rpc();
-          addLog("success", `Agent #${agent.id} successfully closed!`);
-        } catch (err) {
-          console.warn(`On-chain close for Agent #${agent.id} rejected, simulating removal...`, err);
-          addLog("warning", `⚠️ Close rejected on-chain for Agent #${agent.id}. Simulating removal...`);
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          addLog("success", `Successfully simulated removal of Agent #${agent.id}!`);
+        currentGroup.push({ agent, ix });
+        if (currentGroup.length >= CLOSE_ALL_INSTRUCTIONS_PER_TX) {
+          instructionGroups.push(currentGroup);
+          currentGroup = [];
         }
       }
+      if (currentGroup.length > 0) {
+        instructionGroups.push(currentGroup);
+      }
+
+      const latestBlockhash = await getLatestBlockhashWithRetry();
+      const transactions = instructionGroups.map((group) => {
+        const tx = new Transaction();
+        group.forEach((entry) => tx.add(entry.ix));
+        tx.feePayer = publicKey;
+        tx.recentBlockhash = latestBlockhash.blockhash;
+        return tx;
+      });
+
+      const signedTxs =
+        wallet.signAllTransactions && transactions.length > 1
+          ? await (async () => {
+              addLog("info", `🔐 Requesting batched wallet signature for ${transactions.length} close transactions...`);
+              return wallet.signAllTransactions!(transactions);
+            })()
+          : null;
+
+      for (let i = 0; i < transactions.length; i++) {
+        const group = instructionGroups[i];
+        const tx = transactions[i];
+        try {
+          const signature = signedTxs
+            ? await connection.sendRawTransaction(signedTxs[i].serialize(), { skipPreflight: false, preflightCommitment: "confirmed" })
+            : await wallet.sendTransaction(tx, connection, { skipPreflight: false, preflightCommitment: "confirmed" });
+
+          await connection.confirmTransaction(
+            {
+              signature,
+              blockhash: latestBlockhash.blockhash,
+              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            },
+            "confirmed"
+          );
+
+          for (const { agent } of group) {
+            recordTxEvent({
+              type: "Decommission Agent",
+              id: agent.id,
+              signature,
+              mode: "real",
+              status: "confirmed",
+              balanceBefore: agent.balance,
+              balanceAfter: 0,
+              delta: -agent.balance,
+            });
+          }
+          addLog("success", `Batch ${i + 1}/${transactions.length} confirmed. Removed ${group.length} agents.`);
+        } catch (err: any) {
+          await appendSendTxLogs(err, `Close-all batch ${i + 1}`);
+          const errMsg = err?.message || err?.toString() || "";
+          if (!simulationMode) {
+            for (const { agent } of group) {
+              recordTxEvent({
+                type: "Decommission Agent",
+                id: agent.id,
+                mode: "real",
+                status: "failed",
+                message: errMsg,
+              });
+            }
+            throw err;
+          }
+
+          for (const { agent } of group) {
+            recordTxEvent({
+              type: "Decommission Agent",
+              id: agent.id,
+              mode: "sim",
+              status: "simulated",
+              balanceBefore: agent.balance,
+              balanceAfter: 0,
+              delta: -agent.balance,
+              message: errMsg,
+            });
+          }
+          addLog("warning", `⚠️ Batch ${i + 1}/${transactions.length} failed on-chain. Simulated removals for ${group.length} agents.`);
+        }
+      }
+
       addLog("success", "🎉 All agents successfully deleted! Rent funds returned.");
       await reload();
     } catch (err: any) {
       console.error(err);
       addLog("error", `Batch deletion failed: ${err.message || err}`);
+      if (!simulationMode) {
+        triggerErrorPopup("Batch Close Failed (Real Mode)", err);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -1057,43 +1421,68 @@ export function useSimulatorState() {
       })
     ];
 
-    const index = (agentId - 1) % pool.length;
+    const index = Math.floor(Math.random() * pool.length);
     const selectedObj = pool[index]();
     return JSON.stringify(selectedObj);
+  }, []);
+
+  const resolveProvider = useCallback((selected: LlmProvider, keyInput: string): Exclude<LlmProvider, "auto"> => {
+    if (selected !== "auto") return selected;
+
+    const openRouterKey = keyInput || localStorage.getItem("solagent_openrouter_api_key") || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
+    const geminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+    const candidates: Exclude<LlmProvider, "auto">[] = [];
+
+    if (openRouterKey.trim()) candidates.push("openrouter");
+    if (geminiKey.trim()) candidates.push("gemini");
+    candidates.push("mock");
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }, []);
 
   // Step 4: Live AI Solver Driven by OpenRouter/Gemini
   const handleLiveAISolve = async (customId?: number) => {
     if (!connected || !publicKey) {
       triggerErrorPopup("Wallet Disconnected", "Please connect your Solana Wallet in Step 1 first.");
-      return;
+      return false;
     }
 
     const id = customId !== undefined ? customId : activeTab;
     const activeAgent = agents.find((a) => a.id === id);
     if (!activeAgent) {
       triggerErrorPopup("Agent PDA Missing", "Please register and spawn your Agent PDA in Step 2 first.");
-      return;
+      return false;
     }
+
+    const requiredAmount = parseFloat(spendAmount);
+    if (activeAgent.balance < requiredAmount) {
+      addLog("error", `❌ [Agent #${id}] Insufficient funds in Agent PDA Vault. Active balance: $${activeAgent.balance.toFixed(2)}, Required: $${requiredAmount.toFixed(2)}.`);
+      triggerErrorPopup("Insufficient Funds", `Agent #${id} has a balance of $${activeAgent.balance.toFixed(2)}, which is less than the requested transaction size of $${requiredAmount.toFixed(2)}. Please fund this agent in Step 3 first.`);
+      return false;
+    }
+
+    const effectiveProvider = resolveProvider(llmProvider, apiKey.trim());
+    const chosenServer = pickServerLabel(effectiveProvider, id);
 
     let activeKey = apiKey.trim();
     if (!activeKey) {
-      if (llmProvider === "gemini") {
+      if (effectiveProvider === "gemini") {
         activeKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
-      } else if (llmProvider === "openrouter") {
+      } else if (effectiveProvider === "openrouter") {
         activeKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "";
       }
     }
 
-    if (llmProvider !== "mock" && !activeKey && llmProvider !== "ollama") {
+    if (effectiveProvider !== "mock" && !activeKey && effectiveProvider !== "ollama") {
       triggerErrorPopup("API Key Missing", "Please enter your API Key in the Advanced Config dropdown or set it in your environment (.env).");
-      return;
+      return false;
     }
 
     updateSolverState(id, "fetching");
     setSolverErrorMsg("");
     setConfirmedTxSignature("");
     addLog("info", `🤖 [Agent #${id}] Capturing Live AI Autopilot challenge...`);
+    addLog("info", `🌐 [Agent #${id}] Routed to ${chosenServer} via ${effectiveProvider.toUpperCase()} provider.`);
 
     const mockChallenge = {
       error: "Payment Required",
@@ -1128,13 +1517,13 @@ ${JSON.stringify(mockChallenge, null, 2)}
 `;
 
     updateSolverState(id, "querying");
-    addLog("info", `🧠 Querying ${llmProvider.toUpperCase()} cognitive model...`);
+    addLog("info", `🧠 Querying ${effectiveProvider.toUpperCase()} cognitive model...`);
 
     let toolCallText = "";
     const queryStart = Date.now();
 
     try {
-      if (llmProvider === "gemini") {
+      if (effectiveProvider === "gemini") {
         try {
           const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKey}`;
           const res = await fetch(url, {
@@ -1177,7 +1566,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
           toolCallText = data.choices?.[0]?.message?.content || "";
           addLog("success", `✅ OpenRouter failover succeeded using model: ${targetModel}`);
         }
-      } else if (llmProvider === "openrouter") {
+      } else if (effectiveProvider === "openrouter") {
         const targetModel = modelName.trim() || "xiaomi/mimo-v2.5";
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -1199,7 +1588,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
         if (!res.ok) throw new Error(`OpenRouter API error status: ${res.status}`);
         const data = await res.json();
         toolCallText = data.choices?.[0]?.message?.content || "";
-      } else if (llmProvider === "ollama") {
+      } else if (effectiveProvider === "ollama") {
         const targetModel = modelName.trim() || "qwen3:14b";
         const res = await fetch("http://localhost:11434/api/chat", {
           method: "POST",
@@ -1234,9 +1623,9 @@ ${JSON.stringify(mockChallenge, null, 2)}
       const queryLatency = Date.now() - queryStart;
       const promptTokens = Math.round(systemInstruction.length / 4.2 + userPrompt.length / 4.2);
       const completionTokens = Math.round(toolCallText.length / 4.2);
-      const modelNameVal = llmProvider === "gemini" ? "gemini-1.5-flash" :
-                           llmProvider === "openrouter" ? modelName :
-                           llmProvider === "ollama" ? modelName : "mock-cognitive-v2";
+      const modelNameVal = effectiveProvider === "gemini" ? "gemini-1.5-flash" :
+                           effectiveProvider === "openrouter" ? modelName :
+                           effectiveProvider === "ollama" ? modelName : "mock-cognitive-v2";
 
       setCognitiveTelemetry(prev => ({
         ...prev,
@@ -1268,7 +1657,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
         try {
           const vaultPda = getVaultPda(publicKey);
           const agentPda = getAgentPda(vaultPda, args.agentId);
-          const usdcMintKey = new PublicKey(usdcMintInput.trim());
+          const usdcMintKey = await resolveSupportedMint();
 
           const agentTokenAccount = getAssociatedTokenAddressSync(
             usdcMintKey,
@@ -1303,7 +1692,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
                   lamports: 50_000_000, // 0.05 SOL
                 })
               );
-              const latest = await connection.getLatestBlockhash("confirmed");
+              const latest = await getLatestBlockhashWithRetry();
               transferTx.recentBlockhash = latest.blockhash;
               transferTx.feePayer = publicKey;
               const transferSig = await wallet.sendTransaction(transferTx, connection);
@@ -1326,7 +1715,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
                 ASSOCIATED_TOKEN_PROGRAM_ID
               )
             );
-            const latest = await connection.getLatestBlockhash("confirmed");
+            const latest = await getLatestBlockhashWithRetry();
             tx.recentBlockhash = latest.blockhash;
             tx.feePayer = simulatedSigner!.publicKey;
             
@@ -1354,7 +1743,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
                 ASSOCIATED_TOKEN_PROGRAM_ID
               )
             );
-            const latest = await connection.getLatestBlockhash("confirmed");
+            const latest = await getLatestBlockhashWithRetry();
             tx.recentBlockhash = latest.blockhash;
             tx.feePayer = simulatedSigner!.publicKey;
 
@@ -1385,7 +1774,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
 
           const transaction = new Transaction().add(spendInstruction);
           transaction.feePayer = simulatedSigner!.publicKey;
-          const latestBlockhash = await connection.getLatestBlockhash("confirmed");
+          const latestBlockhash = await getLatestBlockhashWithRetry();
           transaction.recentBlockhash = latestBlockhash.blockhash;
 
           // Sign the transaction locally with the agent's simulatedSigner!
@@ -1399,7 +1788,32 @@ ${JSON.stringify(mockChallenge, null, 2)}
 
           await connection.confirmTransaction(txSignature, "confirmed");
 
-          logTxSignature("Agent Spend Payout", txSignature, id);
+          try {
+            const activeNetwork = typeof window !== "undefined" ? localStorage.getItem("solagent_network") : "devnet";
+            const clusterParam = activeNetwork === "localnet"
+              ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
+              : "cluster=devnet";
+            const explorerUrl = `https://explorer.solana.com/tx/${txSignature}?${clusterParam}`;
+            if (typeof window !== "undefined") {
+              window.open(explorerUrl, "_blank");
+            }
+          } catch (openErr) {
+            console.error("Failed to open explorer automatically", openErr);
+          }
+
+          const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+          const spendDelta = -(args.amount / 1_000_000);
+          recordTxEvent({
+            type: "Agent Spend Payout",
+            id,
+            signature: txSignature,
+            serverLabel: chosenServer,
+            mode: "real",
+            status: "confirmed",
+            balanceBefore: beforeBalance,
+            balanceAfter: Math.max(0, beforeBalance + spendDelta),
+            delta: spendDelta,
+          });
           addLog("success", `🎉 [Agent #${id}] Spending instruction confirmed! Transaction complete.`);
           setConfirmedTxSignature(txSignature);
 
@@ -1413,7 +1827,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
           addLog("success", `   >>> "${selectedPayload}"`);
 
           // Log premium data feed
-          logDataFeed(id, selectedPayload);
+          logDataFeed(id, selectedPayload, chosenServer, effectiveProvider);
 
           updateSolverState(id, "done");
           await reload();
@@ -1422,7 +1836,9 @@ ${JSON.stringify(mockChallenge, null, 2)}
           setTimeout(() => {
             updateSolverState(id, "idle");
           }, 4000);
+          return true;
         } catch (txErr: any) {
+          await appendSendTxLogs(txErr, `[Agent #${id}] ATA/Spend preflight`);
           const errMsg = txErr.message || "";
           const errStack = txErr.stack || "";
           const errStringified = (() => {
@@ -1440,10 +1856,18 @@ ${JSON.stringify(mockChallenge, null, 2)}
             fullErrText.includes("custom program error: 1")
           ) {
             addLog("error", "🛑 [ON-CHAIN REVERT] Spend failed: The Agent's Vault Token Account has Insufficient Funds! Please fund the agent first.");
+            recordTxEvent({
+              type: "Agent Spend Payout",
+              id,
+              serverLabel: chosenServer,
+              mode: "real",
+              status: "failed",
+              message: errMsg || "Insufficient funds",
+            });
             triggerErrorPopup("Agent Vault: Insufficient Token Balance", new Error("The Agent Vault Token Account does not have enough custom SOLAGNT tokens to cover the paywall request. Please fund this agent in the fleet controller grid."));
             updateSolverState(id, "error");
             setSolverErrorMsg("Agent Vault has Insufficient Token Balance to complete this payment.");
-            return;
+            return false;
           }
           
           if (
@@ -1468,20 +1892,59 @@ ${JSON.stringify(mockChallenge, null, 2)}
           ) {
             // This is a legitimate smart contract revert! Report it correctly!
             addLog("error", `🛑 [ON-CHAIN REVERT] Spend instruction blocked by security policy: ${errMsg || txErr.toString()}`);
+            recordTxEvent({
+              type: "Agent Spend Payout",
+              id,
+              serverLabel: chosenServer,
+              mode: "real",
+              status: "failed",
+              message: errMsg || txErr.toString(),
+            });
             triggerErrorPopup("Spending Policy Blocked Transaction", txErr);
             updateSolverState(id, "error");
             setSolverErrorMsg(errMsg || txErr.toString());
+            return false;
           } else {
+            if (!simulationMode) {
+              addLog("error", `❌ Real mode: spend execution failed (${errMsg || txErr.toString()})`);
+              recordTxEvent({
+                type: "Agent Spend Payout",
+                id,
+                serverLabel: chosenServer,
+                mode: "real",
+                status: "failed",
+                message: errMsg || txErr.toString(),
+              });
+              triggerErrorPopup("Spend Failed (Real Mode)", txErr);
+              updateSolverState(id, "error");
+              setSolverErrorMsg(errMsg || txErr.toString());
+              return false;
+            }
+
             console.warn("ATA accounts missing on-chain. Simulating confirm standard...", txErr);
-            addLog("warning", "⚠️ Token accounts not initialized. Simulating signature standard...");
+            addLog("warning", "⚠️ Simulation Mode: token accounts not initialized, simulating signature.");
 
             await new Promise((resolve) => setTimeout(resolve, 1000));
             const fakeSignature = Array.from({ length: 4 }, () => Math.random().toString(36).substring(2)).join("") + "F5FjAA";
             setConfirmedTxSignature(fakeSignature);
+            const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
+            const spendDelta = -(args.amount / 1_000_000);
+            recordTxEvent({
+              type: "Agent Spend Payout",
+              id,
+              signature: fakeSignature,
+              serverLabel: chosenServer,
+              mode: "sim",
+              status: "simulated",
+              balanceBefore: beforeBalance,
+              balanceAfter: Math.max(0, beforeBalance + spendDelta),
+              delta: spendDelta,
+              message: errMsg || txErr.toString(),
+            });
             addLog("success", `🎉 Budget Authorized securely on-chain! Sent to address: ${targetPubKey.toBase58()}`);
             
             const selectedPayload = generatePremiumJSON(id);
-            logDataFeed(id, selectedPayload);
+            logDataFeed(id, selectedPayload, chosenServer, effectiveProvider);
 
             updateSolverState(id, "done");
 
@@ -1489,6 +1952,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
             setTimeout(() => {
               updateSolverState(id, "idle");
             }, 4000);
+            return true;
           }
         }
       } else {
@@ -1499,6 +1963,15 @@ ${JSON.stringify(mockChallenge, null, 2)}
       updateSolverState(id, "error");
       setSolverErrorMsg(err.message || err.toString());
       addLog("error", `❌ AI Interception Failed: ${err.message || err.toString()}`);
+      recordTxEvent({
+        type: "Agent Spend Payout",
+        id,
+        serverLabel: chosenServer,
+        mode: simulationMode ? "sim" : "real",
+        status: "failed",
+        message: err.message || err.toString(),
+      });
+      return false;
     }
   };
 
@@ -1506,14 +1979,14 @@ ${JSON.stringify(mockChallenge, null, 2)}
   const handleLiveAISolveForAgent = async (id: number) => {
     setActiveTab(id);
     await new Promise((resolve) => setTimeout(resolve, 150));
-    await handleLiveAISolve(id);
+    return handleLiveAISolve(id);
   };
 
   // Batch Solver for all active fleet agents in parallel
   const handleBatchRunSolvers = async () => {
-    const activeAgents = agents.filter((a) => a.status === "Active" && a.balance > 0);
+    const activeAgents = agents.filter((a) => a.status === "Active" && a.balance >= parseFloat(spendAmount));
     if (activeAgents.length === 0) {
-      addLog("warning", "No active agents with custom token balances available to run batch tests.");
+      addLog("warning", `No active agents with custom token balances >= $${parseFloat(spendAmount).toFixed(2)} available to run batch tests.`);
       return;
     }
 
@@ -1521,21 +1994,29 @@ ${JSON.stringify(mockChallenge, null, 2)}
     addLog("info", "⚡ Firing Batch Fleet Autonomous Solvers in parallel concurrently...");
 
     try {
-      await Promise.all(
+      const results = await Promise.all(
         activeAgents.map(async (agent) => {
           addLog("info", `🚀 Parallel Trigger: Launching AI Solver concurrently for Agent #${agent.id}...`);
           try {
-            await handleLiveAISolve(agent.id);
+            const ok = await handleLiveAISolve(agent.id);
+            return { id: agent.id, ok: !!ok };
           } catch (e) {
             addLog("error", `❌ Parallel AI Solver failed for Agent #${agent.id}`);
+            return { id: agent.id, ok: false };
           }
         })
       );
+
+      const succeeded = results.filter((r) => r.ok).length;
+      const failed = results.length - succeeded;
+      if (failed > 0) {
+        addLog("warning", `⚠️ Batch Fleet Solvers completed with failures (${succeeded} success / ${failed} failed).`);
+      } else {
+        addLog("success", `⚡ Batch Fleet Solvers finished successfully (${succeeded}/${results.length}).`);
+      }
     } catch (err) {
       addLog("error", "❌ Batch Parallel Execution error.");
     }
-
-    addLog("success", "⚡ Batch Fleet Solvers loop finished successfully! Fleet is active.");
     setActionLoading(false);
   };
 
@@ -1646,6 +2127,8 @@ ${JSON.stringify(mockChallenge, null, 2)}
     setModelName,
     merchantWallet,
     setMerchantWallet,
+    simulationMode,
+    setSimulationMode,
     solverState,
     solverErrorMsg,
     confirmedTxSignature,

@@ -206,12 +206,16 @@ export default function StepAiSolver({
               <div className="text-[9px] text-zinc-500 truncate">
                 Signature: {confirmedTxSignature}
               </div>
-              <a
-                href={
-                  confirmedTxSignature.endsWith("F5FjAA")
-                    ? `https://explorer.solana.com/address/${merchantWallet}?cluster=devnet`
-                    : `https://explorer.solana.com/tx/${confirmedTxSignature}?cluster=devnet`
-                }
+               <a
+                href={(() => {
+                  const activeNetwork = typeof window !== "undefined" ? localStorage.getItem("solagent_network") : "devnet";
+                  const clusterParam = activeNetwork === "localnet"
+                    ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
+                    : "cluster=devnet";
+                  return confirmedTxSignature.endsWith("F5FjAA")
+                    ? `https://explorer.solana.com/address/${merchantWallet}?${clusterParam}`
+                    : `https://explorer.solana.com/tx/${confirmedTxSignature}?${clusterParam}`;
+                })()}
                 target="_blank"
                 rel="noreferrer"
                 className="text-[10px] text-vivid-cyan hover:underline flex items-center gap-1 mt-1 font-bold"

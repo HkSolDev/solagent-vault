@@ -29,6 +29,16 @@ Every `spend` call executes these strict checks sequentially inside the smart co
 
 ---
 
+## ✨ v1.5 Demo Upgrade Highlights
+
+For capstone/demo-day clarity, the dashboard now includes:
+1. **Execution Mode Toggle:** `Simulation Mode` (demo-friendly fallback) vs `Real On-Chain Mode` (hard-fail, no fake success).
+2. **Policy Presets:** one-click `Conservative`, `Balanced`, and `Aggressive` spend-limit templates.
+3. **Allowlist Manager UX:** labeled provider presets instead of only raw pubkeys.
+4. **Proof View Telemetry:** each action shows real/simulated status, tx metadata, and balance delta context.
+
+---
+
 ## 🔌 LLM Integration Skill (`SKILL.md`)
 
 We have designed a native **`SKILL.md`** file that acts as the cognitive instruction manual for LLMs (like Qwen on Ollama or GPT-4o). The AI agent ingests this markdown file to automatically:

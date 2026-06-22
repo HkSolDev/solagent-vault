@@ -18,12 +18,19 @@ export interface OnChainAgent {
 }
 
 export function useAgentState() {
+  const MAX_AGENT_SCAN = 5000;
   const program = useAnchorProgram();
   const { publicKey, connected } = useWallet();
 
   const [vaultInitialized, setVaultInitialized] = useState<boolean | null>(null);
   const [agents, setAgents] = useState<OnChainAgent[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const isRateLimitErr = (err: unknown) => {
+    const msg = String((err as any)?.message || err || "").toLowerCase();
+    return msg.includes("429") || msg.includes("rate limit");
+  };
 
   // Derive VaultState PDA seed: ["vault", owner]
   const getVaultPda = useCallback((owner: PublicKey) => {
@@ -64,32 +71,70 @@ export function useAgentState() {
       }
 
       if (vaultAccount) {
-        // Query registered agent state accounts (we fetch up to 10 for the fleet sandbox dashboard)
-        const loadedAgents: OnChainAgent[] = [];
-        for (let i = 1; i <= 10; i++) {
-          const agentPda = getAgentPda(vaultPda, i);
+        // Discover all agent_state accounts owned by this wallet directly from chain.
+        let allOwnedAgents: any[] = [];
+        let lastErr: unknown = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            const agentAcc: any = await (program.account as any).agentState.fetch(agentPda);
-            loadedAgents.push({
-              id: i,
-              publicKey: agentPda.toBase58(),
-              signer: agentAcc.agentSigner.toBase58(),
-              balance: agentAcc.balance.toNumber() / 1_000_000, // 6 decimals USDC
-              maxPerCall: agentAcc.maxPerCall.toNumber() / 1_000_000,
-              maxPerMinute: agentAcc.maxPerMinute.toNumber() / 1_000_000,
-              status: agentAcc.status.active ? "Active" : "Paused",
-              allowedProviders: agentAcc.allowedProviders
-                .map((p: PublicKey) => p.toBase58())
-                .filter((p: string) => p !== PublicKey.default.toBase58()),
-            });
+            allOwnedAgents = await (program.account as any).agentState.all([
+              {
+                memcmp: {
+                  // Account layout: 8 discriminator + 32 vault = 40 bytes, then owner pubkey starts.
+                  offset: 40,
+                  bytes: publicKey.toBase58(),
+                },
+              },
+            ]);
+            lastErr = null;
+            break;
           } catch (err) {
-            // Agent ID doesn't exist yet on-chain
+            lastErr = err;
+            if (!isRateLimitErr(err) || attempt === 2) throw err;
+            await sleep(400 * (attempt + 1));
           }
         }
+
+        const accountByPubkey = new Map<string, any>();
+        for (const row of allOwnedAgents) {
+          accountByPubkey.set(row.publicKey.toBase58(), row.account);
+        }
+
+        // Recover user-facing agent IDs by matching PDA derivations.
+        const loadedAgents: OnChainAgent[] = [];
+        let matched = 0;
+        const targetMatches = accountByPubkey.size;
+
+        for (let i = 1; i <= MAX_AGENT_SCAN && matched < targetMatches; i++) {
+          const agentPda = getAgentPda(vaultPda, i);
+          const key = agentPda.toBase58();
+          const agentAcc = accountByPubkey.get(key);
+          if (!agentAcc) continue;
+
+          matched += 1;
+          loadedAgents.push({
+            id: i,
+            publicKey: key,
+            signer: agentAcc.agentSigner.toBase58(),
+            balance: agentAcc.balance.toNumber() / 1_000_000, // 6 decimals token display
+            maxPerCall: agentAcc.maxPerCall.toNumber() / 1_000_000,
+            maxPerMinute: agentAcc.maxPerMinute.toNumber() / 1_000_000,
+            status: agentAcc.status.active
+              ? "Active"
+              : agentAcc.status.paused
+              ? "Paused"
+              : "Drained",
+            allowedProviders: agentAcc.allowedProviders
+              .map((p: PublicKey) => p.toBase58())
+              .filter((p: string) => p !== PublicKey.default.toBase58()),
+          });
+        }
+
+        loadedAgents.sort((a, b) => a.id - b.id);
         setAgents(loadedAgents);
       }
     } catch (err) {
       console.error("Failed to load on-chain agent states", err);
+      // Keep prior loaded list visible when RPC is temporarily rate-limited.
     } finally {
       setLoading(false);
     }

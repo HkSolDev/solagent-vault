@@ -27,10 +27,10 @@ export default function WizardStepLayout({
       ? "border-electric-purple/40 bg-white/[0.02] shadow-[0_0_15px_rgba(147,51,234,0.06)]"
       : isCompleted
       ? "border-success-emerald/20 bg-black/10 opacity-90"
-      : "border-zinc-800/40 bg-black/30 opacity-40 cursor-not-allowed pointer-events-none"
+      : "border-zinc-800/40 bg-black/30 opacity-70"
   }`;
 
-  const headerClickable = (isActive || isCompleted) && onToggle;
+  const headerClickable = !!onToggle;
 
   return (
     <div className={containerClasses}>

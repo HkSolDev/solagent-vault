@@ -52,7 +52,7 @@ export default function StepTokenDeposit({
             </button>
           </div>
           <span className="text-[9px] text-zinc-500 mt-1 block">
-            💡 Click <strong>🚀 Deploy Mint</strong> to launch a fresh custom SOLAGNT mint on-chain and fund your wallet with 1,000 tokens automatically.
+            💡 Click <strong>🚀 Deploy Mint</strong> to launch a fresh custom SOLAGNT mint on-chain and fund your wallet with 1,000,000 tokens automatically.
           </span>
         </div>
       </div>

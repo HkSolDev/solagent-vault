@@ -19,6 +19,7 @@ interface StepAgentPdaProps {
   actionLoading: boolean;
   onInitVault: () => Promise<void>;
   onRegisterAgent: () => Promise<void>;
+  simulationMode: boolean;
   isActive: boolean;
   isCompleted: boolean;
   onToggle: () => void;
@@ -40,10 +41,33 @@ export default function StepAgentPda({
   actionLoading,
   onInitVault,
   onRegisterAgent,
+  simulationMode,
   isActive,
   isCompleted,
   onToggle,
 }: StepAgentPdaProps) {
+  const providerPresets = [
+    { label: "Open Access (No Allowlist)", value: "" },
+    { label: "OpenAI Billing", value: "F5FjAAU6y22eUisRo1dzm5L6ENB4XTNMUGxJrYKsUBvY" },
+    { label: "Anthropic Billing", value: "8VvtM3re4KSbYEHDRdGFXhqGFKp2x1xvnLcTH3ab7Tbo" },
+    { label: "DeepSeek Billing", value: "GpvVtiiuSuLidfbpcmJiUumF2NEnp2DSTN3moopVSRPF" },
+  ];
+
+  const applyPreset = (kind: "conservative" | "balanced" | "aggressive") => {
+    if (kind === "conservative") {
+      setMaxCallInput("2.5");
+      setMaxMinuteInput("7.5");
+      return;
+    }
+    if (kind === "balanced") {
+      setMaxCallInput("5.0");
+      setMaxMinuteInput("15.0");
+      return;
+    }
+    setMaxCallInput("10.0");
+    setMaxMinuteInput("35.0");
+  };
+
   return (
     <WizardStepLayout
       stepNumber={2}
@@ -54,11 +78,13 @@ export default function StepAgentPda({
       onToggle={onToggle}
     >
       <div className="flex flex-col gap-4 font-mono text-xs">
-        {vaultInitialized === false ? (
+        {vaultInitialized !== true ? (
           /* Sub-step: Initializing Master Registry PDA */
           <div className="flex flex-col gap-3">
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Your wallet does not have an initialized **Program Vault Registry** on-chain. Before registering agents, you must deploy this master state PDA.
+              {vaultInitialized === false
+                ? "Your wallet does not have an initialized Program Vault Registry on-chain. Before registering agents, deploy this master state PDA."
+                : "Checking vault registry state for this wallet. If this is your first run on this wallet/network, deploy the Program Vault Registry first."}
             </p>
             <button
               onClick={onInitVault}
@@ -117,8 +143,46 @@ export default function StepAgentPda({
               </div>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-zinc-500 uppercase">Policy Presets</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyPreset("conservative")}
+                  className="py-1.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-200 font-bold text-[10px] hover:bg-amber-400/20 transition-all cursor-pointer"
+                >
+                  Conservative
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("balanced")}
+                  className="py-1.5 rounded border border-vivid-cyan/30 bg-vivid-cyan/10 text-vivid-cyan font-bold text-[10px] hover:bg-vivid-cyan/20 transition-all cursor-pointer"
+                >
+                  Balanced
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset("aggressive")}
+                  className="py-1.5 rounded border border-electric-purple/30 bg-electric-purple/10 text-electric-purple font-bold text-[10px] hover:bg-electric-purple/20 transition-all cursor-pointer"
+                >
+                  Aggressive
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-zinc-500 uppercase">Allowed Provider Wallet (Optional)</label>
+              <select
+                value={allowedProviderInput}
+                onChange={(e) => setAllowedProviderInput(e.target.value)}
+                className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple mb-2"
+              >
+                {providerPresets.map((preset) => (
+                  <option key={preset.label} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
               <input
                 value={allowedProviderInput}
                 onChange={(e) => setAllowedProviderInput(e.target.value)}
@@ -135,6 +199,11 @@ export default function StepAgentPda({
             >
               {actionLoading ? "Registering Agent PDA..." : "Spawn secure Agent PDA on-chain"}
             </button>
+            <p className={`text-[10px] ${simulationMode ? "text-amber-300" : "text-emerald-300"}`}>
+              {simulationMode
+                ? "Simulation Mode active: failed follow-up actions may use simulated confirmations."
+                : "Real Mode active: on-chain failures are hard-blocked with no simulated success fallback."}
+            </p>
           </div>
         )}
       </div>

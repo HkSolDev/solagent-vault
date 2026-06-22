@@ -5,7 +5,7 @@ import React, { useState } from "react";
 interface AiConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  llmProvider: "gemini" | "openrouter" | "ollama" | "mock";
+  llmProvider: "gemini" | "openrouter" | "ollama" | "mock" | "auto";
   onProviderSelect: (val: string) => void;
   apiKey: string;
   onApiKeyChange: (val: string) => void;
@@ -87,6 +87,7 @@ export default function AiConfigModal({
               onChange={(e) => onProviderSelect(e.target.value)}
               className="w-full bg-black/60 border border-glass-border p-2 rounded text-xs text-white focus:outline-none"
             >
+              <option value="auto">Auto Route (random live provider from available keys)</option>
               <option value="mock">Simulated AI Agent (Mock / Offline)</option>
               <option value="openrouter">OpenRouter (Xiaomi Mimo/DeepSeek)</option>
               <option value="gemini">Google Gemini AI Studio</option>
@@ -94,7 +95,7 @@ export default function AiConfigModal({
             </select>
           </div>
 
-          {llmProvider !== "mock" && llmProvider !== "ollama" && (
+          {llmProvider !== "mock" && llmProvider !== "ollama" && llmProvider !== "auto" && (
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-[10px] text-zinc-500 block">API Access Credentials</label>

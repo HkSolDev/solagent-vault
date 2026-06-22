@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useSimulatorState } from "../hooks/use-simulator-state";
 
 // Modular UI imports
@@ -19,6 +19,8 @@ import FleetTopologyMap from "./wizard/fleet-topology-map";
 import CognitiveAuditPanel from "./wizard/cognitive-audit-panel";
 import PerformanceTelemetry from "./wizard/performance-telemetry";
 import DataStreamLedger from "./wizard/data-stream-ledger";
+
+type LlmProvider = "gemini" | "openrouter" | "ollama" | "mock" | "auto";
 
 export default function DashboardSimulator() {
   // Destructure all states and dispatches cleanly from our custom hook
@@ -58,6 +60,8 @@ export default function DashboardSimulator() {
     setModelName,
     merchantWallet,
     setMerchantWallet,
+    simulationMode,
+    setSimulationMode,
     solverState,
     solverErrorMsg,
     confirmedTxSignature,
@@ -111,9 +115,41 @@ export default function DashboardSimulator() {
 
   // Triggered when running batch AI solvers from the Fleet Header
   const handleOpenBatchSolverModal = () => {
+    setActiveTabName("analytics");
     setModalIsBatch(true);
     setIsModalOpen(true);
   };
+
+  const dynamicServerNodes = useMemo(() => {
+    const recentFeeds = dataFeeds.slice(0, 24);
+    const serverMap = new Map<string, { requests: number; lastTs: number }>();
+
+    for (const feed of recentFeeds) {
+      const key = feed.serverLabel || "Unknown Server";
+      const prev = serverMap.get(key);
+      serverMap.set(key, {
+        requests: (prev?.requests || 0) + 1,
+        lastTs: Math.max(prev?.lastTs || 0, feed.timestamp),
+      });
+    }
+
+    const latestTs = recentFeeds[0]?.timestamp || 0;
+    const resolved = Array.from(serverMap.entries()).map(([label, meta], idx) => ({
+      id: `srv-${idx}-${label}`,
+      label,
+      requests: meta.requests,
+      status: (latestTs - meta.lastTs < 120_000 ? "active" : "idle") as "active" | "idle",
+    }));
+
+    if (resolved.length === 0) {
+      return [
+        { id: "srv-default-1", label: "Routing Hub", requests: 0, status: "idle" as const },
+        { id: "srv-default-2", label: "Inference Node", requests: 0, status: "idle" as const },
+      ];
+    }
+
+    return resolved.slice(0, 4);
+  }, [dataFeeds]);
 
   // Executes the actual solver sequence when the Configure AI Brain modal submits
   const handleModalSubmit = async () => {
@@ -127,6 +163,25 @@ export default function DashboardSimulator() {
 
   return (
     <div className="w-full flex flex-col gap-6">
+      <div className="glass-panel rounded-xl border border-glass-border/30 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="font-mono">
+          <p className="text-xs font-bold text-white uppercase tracking-wide">Execution Mode</p>
+          <p className="text-[10px] text-zinc-400 mt-1">
+            Real Mode blocks on-chain failures immediately. Simulation Mode can keep demo flow alive with explicit simulated entries.
+          </p>
+        </div>
+        <button
+          onClick={() => setSimulationMode((prev) => !prev)}
+          className={`px-4 py-2 rounded-lg border font-mono text-xs font-bold transition-all cursor-pointer ${
+            simulationMode
+              ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+              : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+          }`}
+        >
+          {simulationMode ? "Simulation Mode: ON" : "Real On-Chain Mode: ON"}
+        </button>
+      </div>
+
       {/* Sleek Dual-Tab Navigation bar */}
       <div className="flex border-b border-glass-border/30 gap-6 mb-2 relative z-20">
         <button
@@ -185,6 +240,7 @@ export default function DashboardSimulator() {
                 actionLoading={actionLoading}
                 onInitVault={handleInitVault}
                 onRegisterAgent={handleCreateAgent}
+                simulationMode={simulationMode}
                 isActive={currentStep === 2}
                 isCompleted={isStep2Completed}
                 onToggle={() => handleToggleStep(2)}
@@ -223,6 +279,7 @@ export default function DashboardSimulator() {
                 activeAgent={activeAgent}
                 usdcMint={usdcMintInput}
                 simulatedSignerPubKey={simulatedSigner ? simulatedSigner.publicKey.toBase58() : ""}
+                simulationMode={simulationMode}
               />
 
               {/* Real-time scrollable Script Console logs */}
@@ -258,6 +315,7 @@ export default function DashboardSimulator() {
                 activeAgentId={activeTab}
                 solverState={solverState}
                 agentSolverStates={agentSolverStates}
+                serverNodes={dynamicServerNodes}
                 onSelectAgent={setActiveTab}
               />
               
@@ -272,6 +330,7 @@ export default function DashboardSimulator() {
               <PerformanceTelemetry
                 agents={agents}
                 txHistory={txHistory}
+                simulationMode={simulationMode}
               />
               
               {/* Quick Autopilot details card */}
@@ -280,14 +339,14 @@ export default function DashboardSimulator() {
                   <span>🤖</span> SECURE AUTOPILOT ACTIVE SYSTEMS
                 </h4>
                 <p className="text-[10px] text-zinc-400">
-                  Cognitive telemetry rates and RPC sweeps are fully delegated to individual PDAs. Live spending budgets are protected by sandboxed security policies on the Solana Devnet blockchain.
+                  Live metrics shown above are derived from your runtime transaction history and solver telemetry in this session.
                 </p>
                 <div className="grid grid-cols-2 gap-2 mt-1 text-[9px] text-zinc-500 uppercase font-bold">
                   <div className="p-2 bg-black/25 border border-glass-border/20 rounded">
-                    Status: <span className="text-success-emerald">ONLINE</span>
+                    Status: <span className={agents.length > 0 ? "text-success-emerald" : "text-zinc-300"}>{agents.length > 0 ? "ONLINE" : "IDLE"}</span>
                   </div>
                   <div className="p-2 bg-black/25 border border-glass-border/20 rounded">
-                    Vault PDA: <span className="text-white select-all">CONNECTED</span>
+                    Vault PDA: <span className="text-white select-all">{vaultInitialized ? "CONNECTED" : "NOT INITIALIZED"}</span>
                   </div>
                 </div>
               </div>
@@ -304,7 +363,7 @@ export default function DashboardSimulator() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         llmProvider={llmProvider}
-        onProviderSelect={(val) => setLlmProvider(val as any)}
+        onProviderSelect={(val) => setLlmProvider(val as LlmProvider)}
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
         modelName={modelName}

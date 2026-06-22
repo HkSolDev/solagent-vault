@@ -32,7 +32,7 @@ export default function FleetGrid({
   onCloseAllAgents,
   actionLoading,
 }: FleetGridProps) {
-  const activeCount = agents.filter((a) => a.status === "Active").length;
+  const activeCount = agents.filter((a) => a.status === "Active" && a.balance > 0).length;
 
   // Local state to track the custom deposit amount for each agent ID independently
   const [depositAmounts, setDepositAmounts] = useState<Record<number, string>>({});
@@ -90,7 +90,7 @@ export default function FleetGrid({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => {
             const isSelected = activeAgentId === agent.id;
-            const currentDepositVal = depositAmounts[agent.id] !== undefined ? depositAmounts[agent.id] : "1000.0";
+            const currentDepositVal = depositAmounts[agent.id] !== undefined ? depositAmounts[agent.id] : "1000000.0";
 
             return (
               <div
@@ -111,17 +111,23 @@ export default function FleetGrid({
                 <div className="flex justify-between items-center relative z-10">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${
-                      agent.status === "Active" ? "bg-success-emerald animate-pulse" : "bg-emergency-red"
+                      (agent.status === "Active" && agent.balance > 0)
+                        ? "bg-success-emerald animate-pulse"
+                        : agent.balance <= 0
+                        ? "bg-amber-500"
+                        : "bg-emergency-red"
                     }`} />
                     <h4 className="font-mono font-bold text-white text-xs">Agent #{agent.id}</h4>
                   </div>
                   
                   <span className={`text-[9px] font-mono px-2 py-0.5 rounded uppercase border ${
-                    agent.status === "Active"
+                    (agent.status === "Active" && agent.balance > 0)
                       ? "bg-success-emerald/10 border-success-emerald/20 text-success-emerald"
+                      : agent.balance <= 0
+                      ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
                       : "bg-emergency-red/10 border-emergency-red/20 text-emergency-red"
                   }`}>
-                    {agent.status}
+                    {agent.status === "Active" && agent.balance <= 0 ? "Unfunded" : agent.status}
                   </span>
                 </div>
 

@@ -483,4 +483,3 @@ function PitchDeckSlider() {
     </div>
   );
 }
-

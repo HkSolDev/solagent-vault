@@ -18,6 +18,12 @@ export default function SolanaProvider({ children }: { children: React.ReactNode
       if (savedNetwork === "localnet") {
         return "http://127.0.0.1:8899"; // Local Surfpool Validator
       }
+
+      // Check if user set a custom RPC URL
+      const customRpc = localStorage.getItem("solagent_custom_rpc");
+      if (customRpc && customRpc.trim() !== "") {
+        return customRpc.trim();
+      }
       
       // Default to live Devnet so that it works online immediately out of the box
       return "https://api.devnet.solana.com";

@@ -6,6 +6,8 @@ import DashboardSimulator from "@/components/dashboard-simulator";
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [network, setNetwork] = useState<"devnet" | "localnet">("devnet");
+  const [customRpc, setCustomRpc] = useState("");
+  const [showRpcInput, setShowRpcInput] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -16,12 +18,18 @@ export default function DashboardPage() {
       } else {
         setNetwork("devnet");
       }
+      setCustomRpc(localStorage.getItem("solagent_custom_rpc") || "");
     }
   }, []);
 
   const handleNetworkToggle = () => {
     const nextNetwork = network === "devnet" ? "localnet" : "devnet";
     localStorage.setItem("solagent_network", nextNetwork);
+    window.location.reload();
+  };
+
+  const handleSaveCustomRpc = (url: string) => {
+    localStorage.setItem("solagent_custom_rpc", url);
     window.location.reload();
   };
 
@@ -57,21 +65,64 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-4">
             {/* Interactive Network Switcher Dropdown */}
-            <button
-              onClick={handleNetworkToggle}
-              title="Click to toggle between Devnet and Localnet"
-              className="text-[10px] font-mono px-3 py-1.5 rounded-full border border-glass-border bg-black/40 hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer text-zinc-300"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
-                network === "devnet" ? "bg-success-emerald" : "bg-vivid-cyan"
-              }`} />
-              RPC: <span className={
-                network === "devnet" ? "text-success-emerald font-bold" : "text-vivid-cyan font-bold"
-              }>
-                {network === "devnet" ? "Solana Devnet" : "Surfpool Localnet"}
-              </span>
-              <span className="text-[8px] text-zinc-500 font-bold ml-1 uppercase">(Toggle)</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleNetworkToggle}
+                title="Click to toggle between Devnet and Localnet"
+                className="text-[10px] font-mono px-3 py-1.5 rounded-full border border-glass-border bg-black/40 hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer text-zinc-300"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
+                  network === "devnet" ? "bg-success-emerald" : "bg-vivid-cyan"
+                }`} />
+                RPC: <span className={
+                  network === "devnet" ? "text-success-emerald font-bold" : "text-vivid-cyan font-bold"
+                }>
+                  {network === "devnet" ? (customRpc ? "Custom Devnet" : "Solana Devnet") : "Surfpool Localnet"}
+                </span>
+                <span className="text-[8px] text-zinc-500 font-bold ml-1 uppercase">(Toggle)</span>
+              </button>
+
+              {network === "devnet" && (
+                <div className="relative flex items-center">
+                  <button
+                    onClick={() => setShowRpcInput(!showRpcInput)}
+                    title="Configure Custom RPC URL"
+                    className="p-1.5 rounded-full border border-glass-border bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px]"
+                  >
+                    ⚙️
+                  </button>
+                  {showRpcInput && (
+                    <div className="absolute right-0 top-8 z-50 p-3 rounded-lg border border-glass-border bg-zinc-950/95 shadow-2xl flex flex-col gap-2 w-72">
+                      <div className="text-[9px] font-bold text-zinc-300 uppercase">Custom Devnet RPC URL</div>
+                      <input
+                        type="text"
+                        placeholder="https://devnet.helius-rpc.com/?api-key=..."
+                        value={customRpc}
+                        onChange={(e) => setCustomRpc(e.target.value)}
+                        className="w-full text-[10px] px-2 py-1 rounded bg-black border border-glass-border text-white font-mono focus:outline-none focus:border-purple-500"
+                      />
+                      <div className="flex gap-1.5 justify-end">
+                        <button
+                          onClick={() => {
+                            setCustomRpc("");
+                            handleSaveCustomRpc("");
+                          }}
+                          className="text-[9px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          onClick={() => handleSaveCustomRpc(customRpc)}
+                          className="text-[9px] px-2 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white font-mono font-bold"
+                        >
+                          Save & Reload
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             
             <a 
               href="/"

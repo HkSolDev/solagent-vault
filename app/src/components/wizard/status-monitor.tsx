@@ -10,6 +10,7 @@ interface StatusMonitorProps {
   activeAgent: OnChainAgent | undefined;
   usdcMint: string;
   simulatedSignerPubKey: string;
+  simulationMode: boolean;
 }
 
 export default function StatusMonitor({
@@ -19,6 +20,7 @@ export default function StatusMonitor({
   activeAgent,
   usdcMint,
   simulatedSignerPubKey,
+  simulationMode,
 }: StatusMonitorProps) {
   return (
     <div className="glass-panel p-5 rounded-xl border border-glass-border flex flex-col gap-4 bg-white/[0.01]">
@@ -78,11 +80,13 @@ export default function StatusMonitor({
             <span className="text-zinc-500 text-[10px] uppercase">Active Target Agent:</span>
             {activeAgent ? (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase ${
-                activeAgent.status === "Active"
+                (activeAgent.status === "Active" && activeAgent.balance > 0)
                   ? "bg-success-emerald/10 border-success-emerald/20 text-success-emerald"
+                  : activeAgent.balance <= 0
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
                   : "bg-emergency-red/10 border-emergency-red/20 text-emergency-red"
               }`}>
-                Agent #{activeAgent.id} - {activeAgent.status}
+                Agent #{activeAgent.id} - {activeAgent.status === "Active" && activeAgent.balance <= 0 ? "Unfunded" : activeAgent.status}
               </span>
             ) : (
               <span className="text-zinc-500 text-[10px]">None Selected</span>
@@ -115,6 +119,13 @@ export default function StatusMonitor({
           <span className="text-zinc-500 uppercase">USDC / Token Mint Tracker:</span>
           <span className="text-zinc-400 break-all font-mono select-all mt-0.5 text-[9px]">
             {usdcMint || "No token deployed"}
+          </span>
+        </div>
+
+        <div className="p-3 rounded bg-black/40 border border-glass-border/30 flex flex-col gap-1 text-[10px]">
+          <span className="text-zinc-500 uppercase">Execution Mode:</span>
+          <span className={`font-bold ${simulationMode ? "text-amber-300" : "text-emerald-300"}`}>
+            {simulationMode ? "Simulation Mode (demo fallback enabled)" : "Real On-Chain Mode (hard failure on errors)"}
           </span>
         </div>
       </div>

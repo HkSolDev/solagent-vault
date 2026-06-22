@@ -10,6 +10,8 @@ interface DataFeedItem {
   payload: string;
   cost: number;
   size: number;
+  serverLabel?: string;
+  providerLabel?: string;
 }
 
 interface DataStreamLedgerProps {
@@ -55,7 +57,7 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
       <div className="flex items-center justify-between pb-3 border-b border-glass-border/30">
         <div>
           <h4 className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-            <span className="text-success-emerald animate-pulse">🛰️</span> CENTRAL SERVER AGENT: DATA CONSUMPTION LEDGER
+            <span className="text-success-emerald animate-pulse">🛰️</span> INFERENCE SERVER ROUTING: DATA CONSUMPTION LEDGER
           </h4>
           <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
             Bilateral client-to-backend socket channels tracking on-chain micro-payments and decrypted datasets.
@@ -85,15 +87,17 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
             <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto scrollbar-thin pr-1">
               {agents.map((agent) => {
                 const hasFeeds = aggregationMap[agent.id]?.requests > 0;
-                const isActive = agent.status === "Active";
+                const isActive = agent.status === "Active" && agent.balance > 0;
                 
                 return (
                   <div key={agent.id} className="flex items-center justify-between p-2 bg-black/20 border border-glass-border/10 rounded hover:border-glass-border/30 transition-all text-[9px]">
                     <div className="flex items-center gap-2">
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-success-emerald animate-pulse" : "bg-red-500"}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-success-emerald animate-pulse" : agent.balance <= 0 ? "bg-amber-500" : "bg-red-500"}`} />
                       <span className="text-white font-bold">Agent #{agent.id}</span>
                       <span className="text-zinc-500">↔</span>
-                      <span className="text-zinc-400">Decryption Server</span>
+                      <span className="text-zinc-400">
+                        {dataFeeds.find((f) => f.agentId === agent.id)?.serverLabel || "No server route yet"}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       {hasFeeds ? (
@@ -199,6 +203,7 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
                 <tr className="bg-white/5 text-zinc-500 text-[8px] uppercase tracking-wider border-b border-glass-border/20">
                   <th className="p-2.5">Time</th>
                   <th className="p-2.5">Origin Client</th>
+                  <th className="p-2.5">Server</th>
                   <th className="p-2.5">Feed Type</th>
                   <th className="p-2.5">Cost</th>
                   <th className="p-2.5">Decrypted Payload Content Stream</th>
@@ -213,6 +218,12 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
                     </td>
                     <td className="p-2.5">
                       <span className="text-electric-purple font-bold">Agent #{feed.agentId}</span>
+                    </td>
+                    <td className="p-2.5 text-zinc-400">
+                      {feed.serverLabel || "Unknown"}
+                      {feed.providerLabel ? (
+                        <span className="text-zinc-500"> ({String(feed.providerLabel).toUpperCase()})</span>
+                      ) : null}
                     </td>
                     <td className="p-2.5">
                       <span className="text-vivid-cyan bg-vivid-cyan/5 border border-vivid-cyan/10 px-1.5 py-0.5 rounded font-black text-[8px]">

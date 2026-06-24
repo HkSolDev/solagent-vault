@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { useAgentState, OnChainAgent } from "./use-agent-state";
 import { useAnchorProgram } from "./use-anchor-program";
@@ -63,7 +63,49 @@ export function useSimulatorState() {
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
   const { connection } = useConnection();
-  const { vaultInitialized, agents, loading, initializeVault, reload } = useAgentState();
+  const { vaultInitialized, agents: onChainAgents, loading, initializeVault, reload } = useAgentState();
+  const [localAgentOverrides, setLocalAgentOverrides] = useState<Record<number, Partial<OnChainAgent>>>({});
+  const [localDeletedAgentIds, setLocalDeletedAgentIds] = useState<number[]>([]);
+
+  // Computed state combining on-chain and local optimistic overrides
+  const agents = useMemo(() => {
+    let list = [...onChainAgents];
+    
+    // Apply overrides
+    list = list.map(agent => {
+      const override = localAgentOverrides[agent.id];
+      if (override) {
+        return { ...agent, ...override };
+      }
+      return agent;
+    });
+    
+    // Add locally created but not yet on-chain agents
+    Object.keys(localAgentOverrides).forEach(idStr => {
+      const id = parseInt(idStr);
+      if (!list.some(a => a.id === id) && !localDeletedAgentIds.includes(id)) {
+        const override = localAgentOverrides[id];
+        if (override && override.publicKey && override.signer) {
+          list.push({
+            id,
+            publicKey: override.publicKey,
+            signer: override.signer,
+            balance: override.balance ?? 0,
+            maxPerCall: override.maxPerCall ?? 0,
+            maxPerMinute: override.maxPerMinute ?? 0,
+            status: override.status ?? "Active",
+            allowedProviders: override.allowedProviders ?? [],
+          });
+        }
+      }
+    });
+    
+    // Filter out deleted agents
+    list = list.filter(a => !localDeletedAgentIds.includes(a.id));
+    
+    return list.sort((a, b) => a.id - b.id);
+  }, [onChainAgents, localAgentOverrides, localDeletedAgentIds]);
+
   const program = useAnchorProgram();
 
   // Active step in the linear developer flow (Step 1-5)
@@ -467,6 +509,74 @@ export function useSimulatorState() {
     )[0];
   }, [program]);
 
+  const getAgentKeypair = useCallback((id: number | string): Keypair => {
+    const numericId = typeof id === "number" ? id : parseInt(id as string, 10);
+    if (isNaN(numericId)) return Keypair.generate();
+
+    // 1. Try to find the on-chain agent's registered signer public key
+    const onChainAgent = agents.find((a) => a.id === numericId);
+    const registeredSignerPubkey = onChainAgent?.signer;
+
+    if (typeof window !== "undefined") {
+      // 2. Load the agent-specific key from localStorage if it exists
+      const storedAgentKey = localStorage.getItem(`solagent_agent_key_${numericId}`);
+      if (storedAgentKey) {
+        try {
+          const arr = JSON.parse(storedAgentKey);
+          const kp = Keypair.fromSecretKey(new Uint8Array(arr));
+          // If there is a registered signer on-chain and it matches, or if there is no registered signer on-chain yet (creating it)
+          if (!registeredSignerPubkey || kp.publicKey.toBase58() === registeredSignerPubkey) {
+            return kp;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // 3. Fallback to the global simulated signer key if it matches the on-chain registered signer
+      const storedSimulatedKey = localStorage.getItem("solagent_simulated_key");
+      if (storedSimulatedKey) {
+        try {
+          const arr = JSON.parse(storedSimulatedKey);
+          const kp = Keypair.fromSecretKey(new Uint8Array(arr));
+          if (registeredSignerPubkey && kp.publicKey.toBase58() === registeredSignerPubkey) {
+            // Also store it as the agent-specific key so we don't need to fall back next time
+            localStorage.setItem(`solagent_agent_key_${numericId}`, JSON.stringify(Array.from(kp.secretKey)));
+            return kp;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // 4. If there's an on-chain agent but we don't have its private key, but we do have simulatedSigner in memory
+      if (registeredSignerPubkey && simulatedSigner && simulatedSigner.publicKey.toBase58() === registeredSignerPubkey) {
+        localStorage.setItem(`solagent_agent_key_${numericId}`, JSON.stringify(Array.from(simulatedSigner.secretKey)));
+        return simulatedSigner;
+      }
+    }
+
+    // 5. Fallback or new generation
+    if (typeof window !== "undefined") {
+      const storedAgentKey = localStorage.getItem(`solagent_agent_key_${numericId}`);
+      if (storedAgentKey) {
+        try {
+          const arr = JSON.parse(storedAgentKey);
+          return Keypair.fromSecretKey(new Uint8Array(arr));
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    const kp = Keypair.generate();
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`solagent_agent_key_${numericId}`, JSON.stringify(Array.from(kp.secretKey)));
+    }
+    return kp;
+  }, [agents, simulatedSigner]);
+
+
   const resolveSupportedMint = useCallback(async () => {
     const mintKey = new PublicKey(usdcMintInput.trim());
     const mintInfo = await connection.getAccountInfo(mintKey);
@@ -541,12 +651,13 @@ export function useSimulatorState() {
         }
       }
 
+      const agentKeypair = getAgentKeypair(id);
       const signature = await program.methods
         .createAgent(new anchor.BN(id), maxCallLamports, maxMinuteLamports, allowedArr as any, solAllocationLamports)
         .accounts({
           vaultState: vaultPda,
           agentState: agentPda,
-          agentSigner: simulatedSigner.publicKey,
+          agentSigner: agentKeypair.publicKey,
           owner: publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
@@ -559,13 +670,54 @@ export function useSimulatorState() {
         mode: "real",
         status: "confirmed",
       });
+      
+      const activeNetwork = typeof window !== "undefined" ? localStorage.getItem("solagent_network") : "devnet";
+      const clusterParam = activeNetwork === "localnet"
+        ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
+        : "cluster=devnet";
+      const explorerUrl = `https://orbmarkets.io/tx/${signature}?${clusterParam}`;
+      addLog("info", `🔍 Spawn Tx Signature: ${signature}`);
+      addLog("success", `🔗 Spawn Explorer Link: ${explorerUrl}`);
+      
       addLog("success", `Agent #${id} PDA successfully spawned on-chain! Spends delegated to hotkey. ✅`);
+      
+      // Update local overrides instantly
+      setLocalDeletedAgentIds(prev => prev.filter(x => x !== id));
+      setLocalAgentOverrides(prev => ({
+        ...prev,
+        [id]: {
+          id,
+          publicKey: agentPda.toBase58(),
+          signer: agentKeypair.publicKey.toBase58(),
+          balance: 0,
+          maxPerCall: parseFloat(maxCallInput),
+          maxPerMinute: parseFloat(maxMinuteInput),
+          status: "Active",
+          allowedProviders: allowedProviderInput ? [allowedProviderInput.trim()] : [],
+        }
+      }));
+
       setActiveTab(id);
-      // Avoid an extra immediate reload to reduce RPC burst pressure.
+      await reload(); // Force-refresh agent list so it shows up in the frontend instantly!
 
       // Demo-speed onboarding: auto-fund every freshly spawned agent.
       addLog("info", `Auto-funding Agent #${id} with ${AUTO_FUND_NEW_AGENT_TOKENS} tokens for immediate run readiness...`);
       try {
+        let mintExists = false;
+        try {
+          const mintKey = new PublicKey(usdcMintInput.trim());
+          const mintInfo = await connection.getAccountInfo(mintKey);
+          if (mintInfo && mintInfo.owner.equals(TOKEN_PROGRAM_ID)) {
+            mintExists = true;
+          }
+        } catch (e) {
+          mintExists = false;
+        }
+
+        if (!mintExists) {
+          await deployCustomMint();
+        }
+
         await handleDeposit(id, AUTO_FUND_NEW_AGENT_TOKENS);
       } catch (fundErr: any) {
         if (isRateLimitErr(fundErr)) {
@@ -590,80 +742,100 @@ export function useSimulatorState() {
     }
   };
 
+  // Helper to deploy custom mint
+  const deployCustomMint = async (): Promise<PublicKey> => {
+    addLog("info", "🛠️ Custom orbsmarket token mint not found on-chain. Deploying custom mint first...");
+    const mintKeypair = Keypair.generate();
+    const rentExemptBalance = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
+
+    const ownerTokenAccount = getAssociatedTokenAddressSync(
+      mintKeypair.publicKey,
+      publicKey!,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const transaction = new Transaction();
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: publicKey!,
+        newAccountPubkey: mintKeypair.publicKey,
+        space: MINT_SIZE,
+        lamports: rentExemptBalance,
+        programId: TOKEN_PROGRAM_ID,
+      })
+    );
+
+    transaction.add(
+      createInitializeMintInstruction(
+        mintKeypair.publicKey,
+        6, // decimals
+        publicKey!, // mintAuthority
+        publicKey! // freezeAuthority
+      )
+    );
+
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        publicKey!,
+        ownerTokenAccount,
+        publicKey!,
+        mintKeypair.publicKey,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    );
+
+    transaction.add(
+      createMintToInstruction(mintKeypair.publicKey, ownerTokenAccount, publicKey!, 1_000_000_000_000) // 1,000,000 tokens
+    );
+
+    const latestBlockhash = await getLatestBlockhashWithRetry();
+    transaction.recentBlockhash = latestBlockhash.blockhash;
+    transaction.feePayer = publicKey!;
+
+    // Partially sign the transaction with the mint keypair
+    transaction.partialSign(mintKeypair);
+
+    let signature: string;
+    if (wallet.signTransaction) {
+      addLog("info", "🔑 Please sign the token minting transaction in your wallet standard modal...");
+      const signedTx = await wallet.signTransaction(transaction);
+      addLog("info", "⚙️ Submitting raw transaction with mint keypair signature...");
+      signature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
+      });
+    } else {
+      addLog("info", "🔑 Please sign the token minting transaction in your wallet standard modal...");
+      signature = await wallet.sendTransaction(transaction, connection, {
+        signers: [mintKeypair],
+      });
+    }
+
+    addLog("info", "⚙️ Confirming block transactions...");
+    await connection.confirmTransaction(signature, "confirmed");
+
+    recordTxEvent({
+      type: "Create Mint",
+      signature,
+      mode: "real",
+      status: "confirmed",
+    });
+    addLog("success", `🎉 Custom orbsmarket Token Mint successfully deployed! Address: ${mintKeypair.publicKey.toBase58()}`);
+    setUsdcMintInput(mintKeypair.publicKey.toBase58());
+    localStorage.setItem("solagent_usdc_mint", mintKeypair.publicKey.toBase58());
+
+    return mintKeypair.publicKey;
+  };
+
   // Step 3: Deploy Custom Token Mint
   const handleCreateCustomMint = async () => {
     if (!publicKey) return;
     setActionLoading(true);
-    addLog("info", "🛠️ Launching custom SOLAGNT token mint on-chain...");
-
     try {
-      const mintKeypair = Keypair.generate();
-      const rentExemptBalance = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
-
-      const ownerTokenAccount = getAssociatedTokenAddressSync(
-        mintKeypair.publicKey,
-        publicKey,
-        false,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-
-      const transaction = new Transaction();
-      transaction.add(
-        SystemProgram.createAccount({
-          fromPubkey: publicKey,
-          newAccountPubkey: mintKeypair.publicKey,
-          space: MINT_SIZE,
-          lamports: rentExemptBalance,
-          programId: TOKEN_PROGRAM_ID,
-        })
-      );
-
-      transaction.add(
-        createInitializeMintInstruction(
-          mintKeypair.publicKey,
-          6, // decimals
-          publicKey, // mintAuthority
-          publicKey // freezeAuthority
-        )
-      );
-
-      transaction.add(
-        createAssociatedTokenAccountInstruction(
-          publicKey,
-          ownerTokenAccount,
-          publicKey,
-          mintKeypair.publicKey,
-          TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID
-        )
-      );
-
-      transaction.add(
-        createMintToInstruction(mintKeypair.publicKey, ownerTokenAccount, publicKey, 1_000_000_000_000) // 1,000,000 tokens
-      );
-
-      const latestBlockhash = await getLatestBlockhashWithRetry();
-      transaction.recentBlockhash = latestBlockhash.blockhash;
-      transaction.feePayer = publicKey;
-
-      // Partially sign the transaction with the mint keypair
-      transaction.partialSign(mintKeypair);
-
-      addLog("info", "🔑 Please sign the token minting transaction in your wallet standard modal...");
-      const signature = await wallet.sendTransaction(transaction, connection);
-      addLog("info", "⚙️ Confirming block transactions...");
-      await connection.confirmTransaction(signature, "confirmed");
-
-      recordTxEvent({
-        type: "Create Mint",
-        signature,
-        mode: "real",
-        status: "confirmed",
-      });
-      addLog("success", `🎉 Custom SOLAGNT Token Mint successfully deployed! Address: ${mintKeypair.publicKey.toBase58()}`);
-      setUsdcMintInput(mintKeypair.publicKey.toBase58());
-      localStorage.setItem("solagent_usdc_mint", mintKeypair.publicKey.toBase58());
+      await deployCustomMint();
     } catch (err: any) {
       console.error(err);
       addLog("error", `Token mint deployment failed: ${err.message || err}`);
@@ -681,7 +853,7 @@ export function useSimulatorState() {
     const id = customId !== undefined ? customId : activeTab;
     const amountVal = customAmount !== undefined ? customAmount : depositAmount;
 
-    addLog("info", `Initiating deposit of $${amountVal} SOLAGNT into Agent #${id} Vault...`);
+    addLog("info", `Initiating deposit of $${amountVal} orbsmarket into Agent #${id} Vault...`);
 
     try {
       const vaultPda = getVaultPda(publicKey);
@@ -752,7 +924,7 @@ export function useSimulatorState() {
 
         if (needsMint && isAuthority) {
           const mintAmt = depositValBigInt > BigInt("1000000000000") ? depositValBigInt * BigInt(2) : BigInt("1000000000000");
-          addLog("info", `🛠️ Minting additional custom tokens to your wallet (${Number(mintAmt) / 1_000_000} SOLAGNT)...`);
+          addLog("info", `🛠️ Minting additional custom tokens to your wallet (${Number(mintAmt) / 1_000_000} orbsmarket)...`);
           tx.add(
             createMintToInstruction(
               usdcMintKey,
@@ -811,8 +983,27 @@ export function useSimulatorState() {
         balanceAfter: beforeBalance + delta,
         delta,
       });
+      
+      const activeNetwork = typeof window !== "undefined" ? localStorage.getItem("solagent_network") : "devnet";
+      const clusterParam = activeNetwork === "localnet"
+        ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
+        : "cluster=devnet";
+      const explorerUrl = `https://orbmarkets.io/tx/${signature}?${clusterParam}`;
+      addLog("info", `🔍 Deposit Tx Signature: ${signature}`);
+      addLog("success", `🔗 Deposit Explorer Link: ${explorerUrl}`);
+
       addLog("info", "⚙️ Awaiting Devnet block verification...");
-      addLog("success", `Deposited $${amountVal} SOLAGNT into Agent #${id} Vault on-chain! 🎉`);
+      addLog("success", `Deposited $${amountVal} orbsmarket into Agent #${id} Vault on-chain! 🎉`);
+      
+      // Update local overrides instantly
+      setLocalAgentOverrides(prev => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          balance: beforeBalance + delta
+        }
+      }));
+
       await reload();
     } catch (err: any) {
       const errMsg = err?.message || err?.toString() || "";
@@ -857,6 +1048,16 @@ export function useSimulatorState() {
           message: errMsg,
         });
         addLog("success", `Successfully simulated deposit of $${amountVal} USDC into Agent #${id} Vault!`);
+        
+        // Update local overrides instantly
+        setLocalAgentOverrides(prev => ({
+          ...prev,
+          [id]: {
+            ...prev[id],
+            balance: beforeBalance + delta
+          }
+        }));
+
         await reload();
       }, 1000);
     } finally {
@@ -919,7 +1120,26 @@ export function useSimulatorState() {
         balanceAfter: Math.max(0, beforeBalance + delta),
         delta,
       });
+
+      const activeNetwork = typeof window !== "undefined" ? localStorage.getItem("solagent_network") : "devnet";
+      const clusterParam = activeNetwork === "localnet"
+        ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
+        : "cluster=devnet";
+      const explorerUrl = `https://orbmarkets.io/tx/${signature}?${clusterParam}`;
+      addLog("info", `🔍 Withdraw Tx Signature: ${signature}`);
+      addLog("success", `🔗 Withdraw Explorer Link: ${explorerUrl}`);
+
       addLog("success", `Withdrew $${amountStr} custom tokens successfully back to your wallet! ✅`);
+      
+      // Update local overrides instantly
+      setLocalAgentOverrides(prev => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          balance: Math.max(0, beforeBalance + delta)
+        }
+      }));
+
       await reload();
     } catch (err: any) {
       const errMsg = err?.message || err?.toString() || "";
@@ -964,6 +1184,16 @@ export function useSimulatorState() {
           message: errMsg,
         });
         addLog("success", `Successfully simulated vault drainage of $${amountStr} tokens from Agent #${id}!`);
+        
+        // Update local overrides instantly
+        setLocalAgentOverrides(prev => ({
+          ...prev,
+          [id]: {
+            ...prev[id],
+            balance: Math.max(0, beforeBalance + delta)
+          }
+        }));
+
         await reload();
       }, 1000);
     } finally {
@@ -980,7 +1210,13 @@ export function useSimulatorState() {
     try {
       const vaultPda = getVaultPda(publicKey);
       const agentPda = getAgentPda(vaultPda, id);
-      const usdcMintKey = await resolveSupportedMint();
+      let usdcMintKey: PublicKey;
+      try {
+        usdcMintKey = await resolveSupportedMint();
+      } catch (mintErr) {
+        addLog("warning", "⚠️ Configured custom mint is not deployed or invalid. Falling back to default Devnet USDC mint for de-registration.");
+        usdcMintKey = new PublicKey("4zMMC9zXDM2thz7sQZgM7Y6hE784q89S15z3cNMCw5fG");
+      }
 
       const agentTokenAccount = getAssociatedTokenAddressSync(
         usdcMintKey,
@@ -998,9 +1234,56 @@ export function useSimulatorState() {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
-      addLog("info", "🔑 Confirm the close PDA transaction in your wallet modal...");
+      let needInitAta = false;
+      try {
+        const info = await connection.getAccountInfo(agentTokenAccount);
+        if (!info) {
+          needInitAta = true;
+        }
+      } catch (e) {
+        needInitAta = true;
+      }
 
-      const signature = await program.methods
+      let needInitOwnerAta = false;
+      try {
+        const info = await connection.getAccountInfo(ownerTokenAccount);
+        if (!info) {
+          needInitOwnerAta = true;
+        }
+      } catch (e) {
+        needInitOwnerAta = true;
+      }
+
+      const tx = new Transaction();
+      if (needInitAta) {
+        addLog("info", "🛠️ Agent Associated Token Account is not initialized. Spawning ATA on-chain first...");
+        tx.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey,
+            agentTokenAccount,
+            agentPda,
+            usdcMintKey,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
+      }
+
+      if (needInitOwnerAta) {
+        addLog("info", "🛠️ Your Wallet Token Account is not initialized. Spawning owner ATA on-chain first...");
+        tx.add(
+          createAssociatedTokenAccountInstruction(
+            publicKey,
+            ownerTokenAccount,
+            publicKey,
+            usdcMintKey,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
+      }
+
+      const closeIx = await program.methods
         .closeAgent(new anchor.BN(id))
         .accounts({
           vaultState: vaultPda,
@@ -1011,7 +1294,17 @@ export function useSimulatorState() {
           usdcMint: usdcMintKey,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .rpc();
+        .instruction();
+
+      tx.add(closeIx);
+
+      const latestBlockhash = await getLatestBlockhashWithRetry();
+      tx.recentBlockhash = latestBlockhash.blockhash;
+      tx.feePayer = publicKey;
+
+      addLog("info", "🔑 Confirm the close PDA transaction in your wallet modal...");
+      const signature = await wallet.sendTransaction(tx, connection);
+      await connection.confirmTransaction(signature, "confirmed");
 
       const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
       recordTxEvent({
@@ -1024,7 +1317,25 @@ export function useSimulatorState() {
         balanceAfter: 0,
         delta: -beforeBalance,
       });
+
+      const activeNetwork = typeof window !== "undefined" ? localStorage.getItem("solagent_network") : "devnet";
+      const clusterParam = activeNetwork === "localnet"
+        ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
+        : "cluster=devnet";
+      const explorerUrl = `https://orbmarkets.io/tx/${signature}?${clusterParam}`;
+      addLog("info", `🔍 Close Tx Signature: ${signature}`);
+      addLog("success", `🔗 Close Explorer Link: ${explorerUrl}`);
+
       addLog("success", `Agent #${id} PDA successfully closed! Rent SOL refunded to your wallet. 🗑️`);
+      
+      // Update local overrides instantly
+      setLocalDeletedAgentIds(prev => [...prev, id]);
+      setLocalAgentOverrides(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+
       await reload();
     } catch (err: any) {
       const errMsg = err?.message || err?.toString() || "";
@@ -1056,6 +1367,15 @@ export function useSimulatorState() {
           message: errMsg,
         });
         addLog("success", `Successfully de-registered and closed Agent #${id} PDA state account!`);
+        
+        // Update local overrides instantly
+        setLocalDeletedAgentIds(prev => [...prev, id]);
+        setLocalAgentOverrides(prev => {
+          const copy = { ...prev };
+          delete copy[id];
+          return copy;
+        });
+
         await reload();
       }, 1000);
     } finally {
@@ -1085,11 +1405,33 @@ export function useSimulatorState() {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
+      let needInitOwnerAta = false;
+      try {
+        const info = await connection.getAccountInfo(ownerTokenAccount);
+        if (!info) {
+          needInitOwnerAta = true;
+        }
+      } catch (e) {
+        needInitOwnerAta = true;
+      }
+
       // Solana transaction size limits prevent deleting hundreds of PDAs in one tx.
       // We batch instructions so wallet can sign all txs in one approval flow where supported.
       const CLOSE_ALL_INSTRUCTIONS_PER_TX = 4;
       const instructionGroups: Array<Array<{ agent: OnChainAgent; ix: anchor.web3.TransactionInstruction }>> = [];
       let currentGroup: Array<{ agent: OnChainAgent; ix: anchor.web3.TransactionInstruction }> = [];
+
+      if (needInitOwnerAta && agents.length > 0) {
+        const createOwnerAtaIx = createAssociatedTokenAccountInstruction(
+          publicKey,
+          ownerTokenAccount,
+          publicKey,
+          usdcMintKey,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        currentGroup.push({ agent: agents[0], ix: createOwnerAtaIx });
+      }
 
       for (const agent of agents) {
         const agentPda = getAgentPda(vaultPda, agent.id);
@@ -1100,6 +1442,28 @@ export function useSimulatorState() {
           TOKEN_PROGRAM_ID,
           ASSOCIATED_TOKEN_PROGRAM_ID
         );
+
+        let needInitAta = false;
+        try {
+          const info = await connection.getAccountInfo(agentTokenAccount);
+          if (!info) {
+            needInitAta = true;
+          }
+        } catch (e) {
+          needInitAta = true;
+        }
+
+        if (needInitAta) {
+          const createAtaIx = createAssociatedTokenAccountInstruction(
+            publicKey,
+            agentTokenAccount,
+            agentPda,
+            usdcMintKey,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+          currentGroup.push({ agent, ix: createAtaIx });
+        }
 
         const ix = await program.methods
           .closeAgent(new anchor.BN(agent.id))
@@ -1171,6 +1535,14 @@ export function useSimulatorState() {
             });
           }
           addLog("success", `Batch ${i + 1}/${transactions.length} confirmed. Removed ${group.length} agents.`);
+          
+          const deletedIds = group.map((entry) => entry.agent.id);
+          setLocalDeletedAgentIds((prev) => [...prev, ...deletedIds]);
+          setLocalAgentOverrides((prev) => {
+            const copy = { ...prev };
+            deletedIds.forEach((id) => delete copy[id]);
+            return copy;
+          });
         } catch (err: any) {
           await appendSendTxLogs(err, `Close-all batch ${i + 1}`);
           const errMsg = err?.message || err?.toString() || "";
@@ -1200,6 +1572,14 @@ export function useSimulatorState() {
             });
           }
           addLog("warning", `⚠️ Batch ${i + 1}/${transactions.length} failed on-chain. Simulated removals for ${group.length} agents.`);
+          
+          const deletedIds = group.map((entry) => entry.agent.id);
+          setLocalDeletedAgentIds((prev) => [...prev, ...deletedIds]);
+          setLocalAgentOverrides((prev) => {
+            const copy = { ...prev };
+            deletedIds.forEach((id) => delete copy[id]);
+            return copy;
+          });
         }
       }
 
@@ -1495,7 +1875,7 @@ export function useSimulatorState() {
 
     addLog("warning", `📥 [Agent #${id}] Captured Paywall Challenge:`);
     addLog("info", `   - Target: ${mockChallenge.destination}`);
-    addLog("info", `   - Budget Requested: $${(mockChallenge.amount / 1_000_000).toFixed(2)} SOLAGNT`);
+    addLog("info", `   - Budget Requested: $${(mockChallenge.amount / 1_000_000).toFixed(2)} orbsmarket`);
 
     const systemInstruction = `
 You are an autonomous AI Agent equipped with a sandboxed Solana Token Vault.
@@ -1655,6 +2035,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
         addLog("info", `⚙️ [Agent #${id}] Dispatching on-chain spend instruction...`);
 
         try {
+          const agentKeypair = getAgentKeypair(args.agentId);
           const vaultPda = getVaultPda(publicKey);
           const agentPda = getAgentPda(vaultPda, args.agentId);
           const usdcMintKey = await resolveSupportedMint();
@@ -1675,12 +2056,12 @@ ${JSON.stringify(mockChallenge, null, 2)}
             ASSOCIATED_TOKEN_PROGRAM_ID
           );
 
-          // Ensure simulatedSigner has SOL to pay transaction fees autonomously in the background!
-          const signerSol = await connection.getBalance(simulatedSigner!.publicKey);
+          // Ensure agentKeypair has SOL to pay transaction fees autonomously in the background!
+          const signerSol = await connection.getBalance(agentKeypair.publicKey);
           if (signerSol < 20_000_000) { // < 0.02 SOL
             addLog("info", `🤖 [Agent #${id}] Funding autonomous agent hotkey with faucet SOL for zero-prompt background signing...`);
             try {
-              const airdropSig = await connection.requestAirdrop(simulatedSigner!.publicKey, 200_000_000); // 0.2 SOL
+              const airdropSig = await connection.requestAirdrop(agentKeypair.publicKey, 200_000_000); // 0.2 SOL
               await connection.confirmTransaction(airdropSig, "confirmed");
               addLog("success", `✅ [Agent #${id}] Autonomous signer hotkey successfully funded with faucet SOL!`);
             } catch (airdropErr) {
@@ -1688,7 +2069,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
               const transferTx = new Transaction().add(
                 SystemProgram.transfer({
                   fromPubkey: publicKey,
-                  toPubkey: simulatedSigner!.publicKey,
+                  toPubkey: agentKeypair.publicKey,
                   lamports: 50_000_000, // 0.05 SOL
                 })
               );
@@ -1707,7 +2088,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
             addLog("info", `🛠️ [Agent #${id}] Vault ATA missing. Deploying on-chain Associated Account...`);
             const tx = new Transaction().add(
               createAssociatedTokenAccountInstruction(
-                simulatedSigner!.publicKey,
+                agentKeypair.publicKey,
                 agentTokenAccount,
                 agentPda,
                 usdcMintKey,
@@ -1717,10 +2098,10 @@ ${JSON.stringify(mockChallenge, null, 2)}
             );
             const latest = await getLatestBlockhashWithRetry();
             tx.recentBlockhash = latest.blockhash;
-            tx.feePayer = simulatedSigner!.publicKey;
+            tx.feePayer = agentKeypair.publicKey;
             
             addLog("info", `🤖 [Agent #${id}] Initializing Agent ATA autonomously...`);
-            tx.sign(simulatedSigner!);
+            tx.sign(agentKeypair);
             const signature = await connection.sendRawTransaction(tx.serialize(), {
               skipPreflight: false,
               preflightCommitment: "confirmed",
@@ -1735,7 +2116,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
             addLog("info", `🛠️ [Agent #${id}] Recipient merchant ATA missing. Deploying Associated Account...`);
             const tx = new Transaction().add(
               createAssociatedTokenAccountInstruction(
-                simulatedSigner!.publicKey,
+                agentKeypair.publicKey,
                 providerTokenAccount,
                 targetPubKey,
                 usdcMintKey,
@@ -1745,10 +2126,10 @@ ${JSON.stringify(mockChallenge, null, 2)}
             );
             const latest = await getLatestBlockhashWithRetry();
             tx.recentBlockhash = latest.blockhash;
-            tx.feePayer = simulatedSigner!.publicKey;
+            tx.feePayer = agentKeypair.publicKey;
 
             addLog("info", `🤖 [Agent #${id}] Initializing Merchant ATA autonomously...`);
-            tx.sign(simulatedSigner!);
+            tx.sign(agentKeypair);
             const signature = await connection.sendRawTransaction(tx.serialize(), {
               skipPreflight: false,
               preflightCommitment: "confirmed",
@@ -1763,7 +2144,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
             .spend(amountBN, agentIdBN)
             .accounts({
               agentState: agentPda,
-              agentSigner: simulatedSigner!.publicKey,
+              agentSigner: agentKeypair.publicKey,
               agentTokenAccount: agentTokenAccount,
               usdcMint: usdcMintKey,
               providerWallet: targetPubKey,
@@ -1773,12 +2154,12 @@ ${JSON.stringify(mockChallenge, null, 2)}
             .instruction();
 
           const transaction = new Transaction().add(spendInstruction);
-          transaction.feePayer = simulatedSigner!.publicKey;
+          transaction.feePayer = agentKeypair.publicKey;
           const latestBlockhash = await getLatestBlockhashWithRetry();
           transaction.recentBlockhash = latestBlockhash.blockhash;
 
           // Sign the transaction locally with the agent's simulatedSigner!
-          transaction.sign(simulatedSigner!);
+          transaction.sign(agentKeypair);
 
           addLog("info", `⚙️ [Agent #${id}] Submitting raw autonomous transaction to Devnet block...`);
           const txSignature = await connection.sendRawTransaction(transaction.serialize(), {
@@ -1793,12 +2174,11 @@ ${JSON.stringify(mockChallenge, null, 2)}
             const clusterParam = activeNetwork === "localnet"
               ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
               : "cluster=devnet";
-            const explorerUrl = `https://explorer.solana.com/tx/${txSignature}?${clusterParam}`;
-            if (typeof window !== "undefined") {
-              window.open(explorerUrl, "_blank");
-            }
+            const explorerUrl = `https://orbmarkets.io/tx/${txSignature}?${clusterParam}`;
+            addLog("info", `🔍 Tx Signature: ${txSignature}`);
+            addLog("success", `🔗 Solana Explorer Link: ${explorerUrl}`);
           } catch (openErr) {
-            console.error("Failed to open explorer automatically", openErr);
+            console.error("Failed to log explorer URL", openErr);
           }
 
           const beforeBalance = agents.find((agent) => agent.id === id)?.balance ?? 0;
@@ -1864,7 +2244,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
               status: "failed",
               message: errMsg || "Insufficient funds",
             });
-            triggerErrorPopup("Agent Vault: Insufficient Token Balance", new Error("The Agent Vault Token Account does not have enough custom SOLAGNT tokens to cover the paywall request. Please fund this agent in the fleet controller grid."));
+            triggerErrorPopup("Agent Vault: Insufficient Token Balance", new Error("The Agent Vault Token Account does not have enough custom orbsmarket tokens to cover the paywall request. Please fund this agent in the fleet controller grid."));
             updateSolverState(id, "error");
             setSolverErrorMsg("Agent Vault has Insufficient Token Balance to complete this payment.");
             return false;
@@ -1991,6 +2371,60 @@ ${JSON.stringify(mockChallenge, null, 2)}
     }
 
     setActionLoading(true);
+
+    // Pre-flight check: If in real mode, ensure all active agents have SOL for transaction fees
+    if (!simulationMode && publicKey) {
+      addLog("info", "🔍 Checking autonomous hotkey balances for all active agents before launching...");
+      const agentsNeedingFund: PublicKey[] = [];
+      for (const agent of activeAgents) {
+        const agentKeypair = getAgentKeypair(agent.id);
+        try {
+          const bal = await connection.getBalance(agentKeypair.publicKey);
+          if (bal < 20_000_000) { // < 0.02 SOL
+            // Try devnet airdrop first
+            try {
+              const airdropSig = await connection.requestAirdrop(agentKeypair.publicKey, 100_000_000); // 0.1 SOL
+              await connection.confirmTransaction(airdropSig, "confirmed");
+              addLog("success", `✅ [Agent #${agent.id}] Signer hotkey successfully funded via faucet.`);
+            } catch (airdropErr) {
+              // Queue for bundled funding from user's wallet
+              agentsNeedingFund.push(agentKeypair.publicKey);
+            }
+          }
+        } catch (err) {
+          console.error("Failed checking balance/airdrop for agent", agent.id, err);
+          agentsNeedingFund.push(agentKeypair.publicKey);
+        }
+      }
+
+      if (agentsNeedingFund.length > 0) {
+        addLog("info", `🔑 Faucet busy. Requesting a single bundled transaction to pre-fund ${agentsNeedingFund.length} agent(s)...`);
+        try {
+          const transferTx = new Transaction();
+          for (const targetPub of agentsNeedingFund) {
+            transferTx.add(
+              SystemProgram.transfer({
+                fromPubkey: publicKey,
+                toPubkey: targetPub,
+                lamports: 50_000_000, // 0.05 SOL each
+              })
+            );
+          }
+          const latest = await getLatestBlockhashWithRetry();
+          transferTx.recentBlockhash = latest.blockhash;
+          transferTx.feePayer = publicKey;
+          
+          const transferSig = await wallet.sendTransaction(transferTx, connection);
+          await connection.confirmTransaction(transferSig, "confirmed");
+          addLog("success", `✅ Pre-funded all autonomous agent hotkeys with a single bundled transaction!`);
+        } catch (txErr: any) {
+          addLog("error", `❌ Failed to pre-fund agent hotkeys: ${txErr.message || txErr.toString()}`);
+          setActionLoading(false);
+          return;
+        }
+      }
+    }
+
     addLog("info", "⚡ Firing Batch Fleet Autonomous Solvers in parallel concurrently...");
 
     try {

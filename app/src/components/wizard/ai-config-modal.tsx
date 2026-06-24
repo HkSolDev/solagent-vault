@@ -139,7 +139,7 @@ export default function AiConfigModal({
                   onChange={(e) => setSpendAmount(e.target.value)}
                   className="w-full bg-transparent py-2 text-xs text-white focus:outline-none text-center"
                 />
-                <span className="text-[10px] text-zinc-400 font-bold">SOLAGNT</span>
+                <span className="text-[10px] text-zinc-400 font-bold">orbsmarket</span>
               </div>
             </div>
           </div>

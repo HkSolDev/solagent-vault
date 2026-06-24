@@ -52,7 +52,26 @@ export default function AgentTerminal({ logs }: AgentTerminalProps) {
                   : "text-vivid-cyan"
               }
             >
-              {log.message}
+              {(() => {
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const parts = log.message.split(urlRegex);
+                return parts.map((part, i) => {
+                  if (part.match(urlRegex)) {
+                    return (
+                      <a
+                        key={i}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-white transition-colors duration-150 break-all"
+                      >
+                        {part}
+                      </a>
+                    );
+                  }
+                  return <React.Fragment key={i}>{part}</React.Fragment>;
+                });
+              })()}
             </span>
           </div>
         ))}

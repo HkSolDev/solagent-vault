@@ -213,14 +213,14 @@ export default function StepAiSolver({
                     ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
                     : "cluster=devnet";
                   return confirmedTxSignature.endsWith("F5FjAA")
-                    ? `https://explorer.solana.com/address/${merchantWallet}?${clusterParam}`
-                    : `https://explorer.solana.com/tx/${confirmedTxSignature}?${clusterParam}`;
+                    ? `https://orbmarkets.io/address/${merchantWallet}?${clusterParam}`
+                    : `https://orbmarkets.io/tx/${confirmedTxSignature}?${clusterParam}`;
                 })()}
                 target="_blank"
                 rel="noreferrer"
                 className="text-[10px] text-vivid-cyan hover:underline flex items-center gap-1 mt-1 font-bold"
               >
-                🔍 Verify live transaction details on Solana Explorer →
+                🔍 Verify live transaction details on orbmarkets.io →
               </a>
             </div>
           )}

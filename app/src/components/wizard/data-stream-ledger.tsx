@@ -110,7 +110,7 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
                         </span>
                       )}
                       <span className="text-zinc-500 text-[8px] font-black">
-                        {(aggregationMap[agent.id]?.spent || 0).toFixed(2)} SOLAGNT
+                        {(aggregationMap[agent.id]?.spent || 0).toFixed(2)} orbsmarket
                       </span>
                     </div>
                   </div>
@@ -137,7 +137,7 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
             <div className="p-2.5 bg-black/25 border border-glass-border/10 rounded flex flex-col gap-0.5">
               <span className="text-[7px] text-zinc-500 uppercase">Paid Budget Clearance</span>
               <span className="text-sm font-bold text-vivid-cyan flex items-baseline gap-1 mt-0.5">
-                ${totalSpent.toFixed(2)} <span className="text-[8px] text-zinc-400 font-normal">SOLAGNT</span>
+                ${totalSpent.toFixed(2)} <span className="text-[8px] text-zinc-400 font-normal">orbsmarket</span>
               </span>
             </div>
           </div>
@@ -280,7 +280,7 @@ export default function DataStreamLedger({ agents, dataFeeds }: DataStreamLedger
                 Feed Type: <span className="text-vivid-cyan">{selectedFeed.feedType}</span>
               </div>
               <div className="p-2 bg-black/45 border border-glass-border/20 rounded">
-                Budget Paid: <span className="text-white">${selectedFeed.cost.toFixed(2)} SOLAGNT</span>
+                Budget Paid: <span className="text-white">${selectedFeed.cost.toFixed(2)} orbsmarket</span>
               </div>
               <div className="p-2 bg-black/45 border border-glass-border/20 rounded">
                 Packet Size: <span className="text-white">{selectedFeed.size} Bytes</span>

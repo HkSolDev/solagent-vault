@@ -45,67 +45,125 @@ export default function PerformanceTelemetry({
       {/* Gauges rows */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Spend Velocity Gauge */}
-        <div className="p-4 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-1.5 text-center relative overflow-hidden">
-          <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold text-left block">⚡ Spending Speed</span>
-          <div className="flex items-center justify-center py-2">
-            <div className="relative w-24 h-12 flex items-end justify-center overflow-hidden">
-              {/* Semi-circle visual gauge */}
-              <div className="absolute inset-0 border-[7px] border-zinc-800 rounded-full" />
-              <div
-                className="absolute inset-0 border-[7px] border-success-emerald rounded-full transition-transform duration-500"
-                style={{
-                  clipPath: "polygon(0 50%, 100% 50%, 100% 100%, 0 100%)",
-                  transform: `rotate(${Math.min((parseFloat(spendVelocity) / 5) * 180, 180)}deg)`
-                }}
+        <div className="p-5 bg-black/40 rounded-xl border border-glass-border/20 flex flex-col justify-between gap-3 text-center relative overflow-hidden backdrop-blur-md hover:border-glass-border/40 transition-colors duration-300">
+          <span className="text-[10px] font-mono text-zinc-400 uppercase font-bold text-left block tracking-wider">⚡ Spending Speed</span>
+          
+          <div className="flex flex-col items-center justify-center py-2 relative">
+            <svg className="w-24 h-12" viewBox="0 0 100 50">
+              <path
+                d="M 10 45 A 40 40 0 0 1 90 45"
+                fill="none"
+                stroke="#1f1f22"
+                strokeWidth="7"
+                strokeLinecap="round"
               />
-              <span className="font-mono text-sm font-bold text-white absolute bottom-1">
-                {spendVelocity} <span className="text-[8px] text-zinc-400">spm</span>
+              <path
+                d="M 10 45 A 40 40 0 0 1 90 45"
+                fill="none"
+                stroke="url(#speedGradient)"
+                strokeWidth="7"
+                strokeLinecap="round"
+                strokeDasharray="125.66"
+                strokeDashoffset={125.66 - (125.66 * Math.min(parseFloat(spendVelocity) / 5, 1))}
+                className="transition-[stroke-dashoffset] duration-1000 ease-out"
+              />
+              <defs>
+                <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#06b6d4" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute bottom-2 flex flex-col items-center">
+              <span className="font-mono text-base font-extrabold text-white tracking-tight leading-none">
+                {spendVelocity}
+              </span>
+              <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest mt-0.5">spm</span>
+            </div>
+          </div>
+          
+          <span className="text-[9px] font-mono text-zinc-500">Requests per minute (last 5m)</span>
+        </div>
+ 
+        {/* Fleet Token Throughput */}
+        <div className="p-5 bg-black/40 rounded-xl border border-glass-border/20 flex flex-col justify-between gap-4 backdrop-blur-md hover:border-glass-border/40 transition-colors duration-300">
+          <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider font-bold">💰 Funds & Transactions</span>
+          
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-semibold font-mono">Safe Balance</span>
+              <span className="text-base font-extrabold text-white font-mono tracking-tight leading-snug">
+                ${totalDeposited.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5 text-right border-l border-zinc-800/50 pl-4">
+              <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-semibold font-mono">Payments Made</span>
+              <span className="text-base font-extrabold text-cyan-400 font-mono leading-snug">
+                {totalSpends}
               </span>
             </div>
           </div>
-          <span className="text-[8px] font-mono text-zinc-400">Requests per minute (last 5m)</span>
-        </div>
-
-        {/* Fleet Token Throughput */}
-        <div className="p-4 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col justify-between gap-3">
-          <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold">💰 Funds & Transactions</span>
-          
-          <div className="grid grid-cols-2 gap-4 mt-1 font-mono">
-            <div className="flex flex-col gap-1">
-              <span className="text-[8px] text-zinc-500 uppercase tracking-wider font-semibold">Safe Balance</span>
-              <span className="text-sm font-bold text-white">${totalDeposited.toFixed(2)}</span>
+ 
+          <div className="flex flex-col gap-1 mt-1">
+            <div className="flex justify-between text-[8px] font-mono text-zinc-500">
+              <span className="tracking-widest">RESERVE CAPACITY</span>
+              <span>{Math.min((totalDeposited / 1000000) * 100, 100).toFixed(1)}%</span>
             </div>
-            <div className="flex flex-col gap-1 text-right">
-              <span className="text-[8px] text-zinc-500 uppercase tracking-wider font-semibold">Payments Made</span>
-              <span className="text-sm font-bold text-vivid-cyan">{totalSpends}</span>
+            <div className="w-full h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-900">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min((totalDeposited / 1000000) * 100, 100)}%` }}
+              />
             </div>
           </div>
-
-          <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-1">
-            <div
-              className="h-full bg-gradient-to-r from-success-emerald to-emerald-600 rounded-full"
-              style={{ width: `${Math.min((totalDeposited / 100) * 100, 100)}%` }}
-            />
-          </div>
         </div>
-
+ 
         {/* Success Clearance Gauge */}
-        <div className="p-4 bg-black/35 rounded-lg border border-glass-border/20 flex flex-col gap-1.5 text-center relative overflow-hidden">
-          <span className="text-[9px] font-mono text-zinc-500 uppercase font-bold text-left block">✅ Approved Transactions</span>
-          <div className="flex items-center justify-center py-2">
-            <div className="relative w-16 h-16 rounded-full flex items-center justify-center bg-black/45 border-4 border-zinc-800">
-              {/* Radial success circle */}
-                <div
-                  className="absolute inset-0 rounded-full border-4 border-success-emerald opacity-60 animate-ping pointer-events-none"
-                  style={{ clipPath: `polygon(50% 50%, -50% -50%, ${successRateNumber}% -50%)` }}
-                />
-              <span className="font-mono text-base font-bold text-white">
+        <div className="p-5 bg-black/40 rounded-xl border border-glass-border/20 flex flex-col justify-between gap-3 text-center relative overflow-hidden backdrop-blur-md hover:border-glass-border/40 transition-colors duration-300">
+          <span className="text-[10px] font-mono text-zinc-400 uppercase font-bold text-left block tracking-wider">✅ Approved Transactions</span>
+          
+          <div className="flex items-center justify-center py-1 relative">
+            <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 60 60">
+              <circle
+                cx="30"
+                cy="30"
+                r="24"
+                fill="none"
+                stroke="#1f1f22"
+                strokeWidth="4.5"
+              />
+              <circle
+                cx="30"
+                cy="30"
+                r="24"
+                fill="none"
+                stroke="url(#successGradient)"
+                strokeWidth="4.5"
+                strokeDasharray="150.8"
+                strokeDashoffset={isNaN(successRateNumber) ? 150.8 : 150.8 - (150.8 * successRateNumber) / 100}
+                strokeLinecap="round"
+                className="transition-[stroke-dashoffset] duration-1000 ease-out"
+              />
+              <defs>
+                <linearGradient id="successGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#34d399" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center">
+              <span className="font-mono text-sm font-extrabold text-white">
                 {successRate}%
               </span>
             </div>
           </div>
-          <span className="text-[8px] font-mono text-zinc-400">Approved vs Blocked Ratio</span>
-          <span className="text-[8px] font-mono text-zinc-500">Confirmed: {confirmedEvents} | Failed: {failedEvents}</span>
+          
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[8px] font-mono text-zinc-400 tracking-wider">Approved vs Blocked Ratio</span>
+            <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest font-semibold">
+              Confirmed: <span className="text-emerald-400">{confirmedEvents}</span> | Failed: <span className="text-rose-400">{failedEvents}</span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -175,13 +233,13 @@ export default function PerformanceTelemetry({
                             const clusterParam = activeNetwork === "localnet"
                               ? "cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899"
                               : "cluster=devnet";
-                            return `https://explorer.solana.com/tx/${tx.signature}?${clusterParam}`;
+                            return `https://orbmarkets.io/tx/${tx.signature}`;
                           })()}
                           target="_blank"
                           rel="noreferrer"
                           className="text-vivid-cyan hover:underline font-bold"
                         >
-                          [🔍 Solana Explorer]
+                          [🔍 orbmarkets.io]
                         </a>
                       ) : (
                         <span className="text-zinc-600" title={tx.message || "No signature available"}>

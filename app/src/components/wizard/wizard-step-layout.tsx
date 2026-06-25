@@ -24,10 +24,10 @@ export default function WizardStepLayout({
   // Determine border and background styles based on wizard state
   const containerClasses = `glass-panel rounded-xl overflow-hidden border transition-all duration-300 ${
     isActive
-      ? "border-electric-purple/40 bg-white/[0.02] shadow-[0_0_15px_rgba(147,51,234,0.06)]"
+      ? "border-primary/25 bg-surface-container/70 shadow-[0_0_18px_rgba(0,242,255,0.14)]"
       : isCompleted
-      ? "border-success-emerald/20 bg-black/10 opacity-90"
-      : "border-zinc-800/40 bg-black/30 opacity-70"
+      ? "border-secondary/25 bg-surface-container-low/80 opacity-95"
+      : "border-primary/10 bg-surface-container-low/60 opacity-90"
   }`;
 
   const headerClickable = !!onToggle;
@@ -37,7 +37,7 @@ export default function WizardStepLayout({
       <header
         onClick={headerClickable ? onToggle : undefined}
         className={`px-5 py-4 flex items-center justify-between select-none ${
-          headerClickable ? "cursor-pointer hover:bg-white/[0.01]" : ""
+          headerClickable ? "cursor-pointer hover:bg-surface-container-high/20" : ""
         }`}
       >
         <div className="flex items-center gap-3.5">
@@ -47,8 +47,8 @@ export default function WizardStepLayout({
               isCompleted
                 ? "bg-success-emerald/20 text-success-emerald border border-success-emerald/30"
                 : isActive
-                ? "bg-electric-purple text-white shadow-glow-purple"
-                : "bg-zinc-800 text-zinc-500 border border-zinc-700/50"
+                ? "bg-primary-container text-on-primary shadow-[0_0_14px_rgba(0,242,255,0.25)]"
+                : "bg-surface-container-high text-zinc-500 border border-outline-variant/60"
             }`}
           >
             {isCompleted ? "✓" : stepNumber}
@@ -56,7 +56,7 @@ export default function WizardStepLayout({
 
           <div className="flex flex-col">
             <h3
-              className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
+            className={`font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
                 isActive ? "text-white" : isCompleted ? "text-zinc-300" : "text-zinc-500"
               }`}
             >
@@ -74,7 +74,7 @@ export default function WizardStepLayout({
         {(isActive || isCompleted) && (
           <span
             className={`font-mono text-[10px] text-zinc-500 transition-transform duration-300 ${
-              isActive ? "rotate-90 text-electric-purple" : ""
+              isActive ? "rotate-90 text-primary-container" : ""
             }`}
           >
             ▶
@@ -85,10 +85,10 @@ export default function WizardStepLayout({
       {/* Expandable active content wrapper */}
       <div
         className={`transition-all duration-300 ease-in-out overflow-hidden ${
-          isActive ? "max-h-[800px] border-t border-glass-border/30 opacity-100" : "max-h-0 opacity-0"
+          isActive ? "max-h-[800px] border-t border-primary/10 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="p-5 flex flex-col gap-4 bg-black/[0.15]">
+        <div className="p-5 flex flex-col gap-4 bg-gradient-to-b from-surface-container-low/60 to-surface-container-lowest/50">
           {children}
         </div>
       </div>

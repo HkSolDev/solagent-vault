@@ -55,25 +55,24 @@ export default function FleetTopologyMap({
     (agentSolverStates && Object.values(agentSolverStates).some((s) => s === "signing" || s === "done"));
 
   return (
-    <div className="w-full glass-panel p-5 rounded-xl border border-glass-border flex flex-col gap-4 bg-black/45 shadow-2xl relative overflow-hidden">
-      <div className="flex items-center justify-between pb-3 border-b border-glass-border/30">
-        <div>
-          <h4 className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-            <span className="text-vivid-cyan animate-pulse">⚛️</span> INTERACTIVE FLEET TOPOLOGY MAP
-          </h4>
-          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
-            Live nodes from active agents and runtime inference/back-end routes.
-          </p>
+    <div className="w-full glass-panel rounded-xl border border-primary/15 flex flex-col bg-black/45 shadow-2xl relative overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-primary/10 bg-surface-container/45">
+        <div className="flex items-center gap-2.5">
+          <span className="text-vivid-cyan">✣</span>
+          <h4 className="text-xl font-display font-bold text-zinc-100">Interactive Fleet Topology</h4>
         </div>
-        {isTransferring && (
-          <span className="text-[9px] font-mono font-bold text-vivid-cyan bg-vivid-cyan/10 border border-vivid-cyan/20 px-2 py-0.5 rounded animate-pulse">
-            LIVE SWEEP IN FLIGHT
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-primary/20 bg-surface-container-high/70 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+            Auto-Scaling: ON
           </span>
-        )}
+          <span className="rounded-full border border-primary/20 bg-surface-container-high/70 px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+            Latency: 42ms
+          </span>
+        </div>
       </div>
 
-      <div className="w-full relative flex items-center justify-center min-h-[300px] border border-glass-border/20 bg-black/35 rounded-lg p-2 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(147,51,234,0.08),transparent_70%)] pointer-events-none" />
+      <div className="w-full relative flex items-center justify-center min-h-[430px] border border-primary/10 bg-[radial-gradient(ellipse_at_center,rgba(0,242,255,0.10),rgba(8,12,22,0.92)_45%,rgba(6,9,18,1)_80%)] rounded-b-xl p-2 overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0,rgba(0,242,255,0.02)_50%,transparent_100%)] pointer-events-none" />
 
         {agents.length === 0 ? (
           <div className="text-center font-mono text-[11px] text-zinc-500 py-20">
@@ -96,7 +95,31 @@ export default function FleetTopologyMap({
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              <linearGradient id="data-beam" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgba(6, 182, 212, 0.15)" />
+                <stop offset="50%" stopColor="rgba(0, 242, 255, 0.75)" />
+                <stop offset="100%" stopColor="rgba(6, 182, 212, 0.15)" />
+              </linearGradient>
             </defs>
+
+            {/* Ambient motion layer */}
+            <g opacity="0.45">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <circle key={`ambient-${i}`} r="1.8" fill="rgba(0,242,255,0.45)">
+                  <animate
+                    attributeName="opacity"
+                    values="0.1;0.7;0.1"
+                    dur={`${5 + i * 0.9}s`}
+                    repeatCount="indefinite"
+                  />
+                  <animateMotion
+                    path={`M ${80 + i * 55} ${70 + (i % 3) * 80} Q ${230 + i * 14} ${120 + (i % 2) * 120} ${380 + i * 8} ${80 + (i % 4) * 65}`}
+                    dur={`${14 + i * 1.6}s`}
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              ))}
+            </g>
 
             {agents.map((agent, i) => {
               const coords = getAgentCoords(i, agents.length);
@@ -117,6 +140,20 @@ export default function FleetTopologyMap({
                     strokeDasharray={isLinkActive ? "none" : "3, 3"}
                     className="transition-all duration-300"
                   />
+                  {isLinkActive && (
+                    <line
+                      x1={coords.x}
+                      y1={coords.y}
+                      x2={cx}
+                      y2={cy}
+                      stroke="url(#data-beam)"
+                      strokeWidth="1.25"
+                      strokeDasharray="12 10"
+                      opacity="0.85"
+                    >
+                      <animate attributeName="stroke-dashoffset" from="120" to="0" dur="2.6s" repeatCount="indefinite" />
+                    </line>
+                  )}
                   {isSending && (
                     <circle r="4" fill="#a855f7" filter="url(#glow-purple)">
                       <animateMotion path={`M ${coords.x} ${coords.y} L ${cx} ${cy}`} dur="1.5s" repeatCount="indefinite" />
@@ -165,6 +202,12 @@ export default function FleetTopologyMap({
                     filter={node.status === "active" ? "url(#glow-cyan)" : "none"}
                     className="transition-all duration-500"
                   />
+                  {node.status === "active" && (
+                    <circle r="23" fill="none" stroke="rgba(0,242,255,0.45)" strokeWidth="1.2" filter="url(#glow-cyan)">
+                      <animate attributeName="r" values="22;27;22" dur="2.6s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2.6s" repeatCount="indefinite" />
+                    </circle>
+                  )}
                   <text y="4" textAnchor="middle" className="text-[11px] select-none pointer-events-none">
                     🧠
                   </text>
@@ -180,6 +223,10 @@ export default function FleetTopologyMap({
 
             <g transform={`translate(${cx}, ${cy})`}>
               <circle r="30" fill="#0f172a" stroke="#eab308" strokeWidth="2.5" className="shadow-2xl" />
+              <circle r="43" fill="none" stroke="rgba(0,242,255,0.22)" strokeWidth="1.1">
+                <animate attributeName="r" values="40;48;40" dur="3.2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.8;0.1;0.8" dur="3.2s" repeatCount="indefinite" />
+              </circle>
               <circle r="35" fill="none" stroke="rgba(234, 179, 8, 0.2)" strokeWidth="1.5" strokeDasharray="10, 15">
                 <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="10s" repeatCount="indefinite" />
               </circle>
@@ -209,6 +256,12 @@ export default function FleetTopologyMap({
                     filter={isActive ? "url(#glow-purple)" : "none"}
                     className="transition-all duration-300 group-hover:stroke-white"
                   />
+                  {isActive && (
+                    <circle r="28" fill="none" stroke="rgba(168,85,247,0.6)" strokeWidth="1.2" filter="url(#glow-purple)">
+                      <animate attributeName="r" values="26;31;26" dur="2s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.85;0.15;0.85" dur="2s" repeatCount="indefinite" />
+                    </circle>
+                  )}
                   <text y="4" textAnchor="middle" className="text-[12px] select-none pointer-events-none">
                     🤖
                   </text>
@@ -223,6 +276,10 @@ export default function FleetTopologyMap({
             })}
           </svg>
         )}
+
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-primary/20 bg-surface-container/75 px-4 py-2 text-zinc-300 text-sm font-medium shadow-[0_0_18px_rgba(0,242,255,0.08)]">
+          ⌁ Hover nodes to view diagnostic details
+        </div>
       </div>
     </div>
   );

@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import DashboardSimulator from "@/components/dashboard-simulator";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [network, setNetwork] = useState<"devnet" | "localnet">("devnet");
   const [customRpc, setCustomRpc] = useState("");
   const [showRpcInput, setShowRpcInput] = useState(false);
+  const [activeTabName, setActiveTabName] = useState<"fleet" | "analytics" | "security">("fleet");
+  const [activeNavItem, setActiveNavItem] = useState<"command" | "analytics">("command");
 
   useEffect(() => {
     setMounted(true);
@@ -35,51 +38,110 @@ export default function DashboardPage() {
 
   if (!mounted) {
     return (
-      <div className="flex flex-col min-h-screen bg-[#030307] text-[#f4f4f5] justify-center items-center">
-        <div className="w-12 h-12 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+      <div className="flex flex-col min-h-screen bg-[#0e131e] text-[#e4e1e7] justify-center items-center">
+        <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground relative overflow-hidden">
-      {/* Dynamic atmospheric backdrops */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] aspect-square rounded-full bg-electric-purple/10 blur-[130px] pointer-events-none animate-glow-loop" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] aspect-square rounded-full bg-vivid-cyan/8 blur-[120px] pointer-events-none animate-glow-loop" />
-
-      <div className="flex-1 flex flex-col items-center px-6 py-8 relative z-10">
-        {/* Dashboard Workspace Header */}
-        <header className="w-full max-w-6xl flex justify-between items-center mb-10 py-4 px-6 rounded-full glass-panel border-white/5 bg-white/[0.02]">
-          <div className="flex items-center gap-3">
-            <a href="/" className="flex items-center gap-2 hover:opacity-85 transition-opacity">
-              <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-electric-purple to-vivid-cyan animate-pulse" />
-              <span className="font-mono font-bold tracking-widest text-base text-white">
-                SOLAGENT VAULT
-              </span>
-            </a>
-            <span className="h-4 w-px bg-zinc-700" />
-            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800/60 px-2.5 py-0.5 rounded uppercase border border-zinc-700/50">
-              Dev Sandbox
-            </span>
+    <div className="flex min-h-screen bg-background text-on-surface">
+      {/* SideNavBar */}
+      <aside className="h-screen w-64 fixed left-0 top-0 bg-surface-container/80 backdrop-blur-lg border-r border-white/10 flex flex-col p-4 gap-6 z-50">
+        <div className="flex items-center gap-3 px-2">
+          <div className="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(0,242,255,0.3)]">
+            <span className="material-symbols-outlined text-on-primary-container text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>security</span>
           </div>
+          <div>
+            <h1 className="font-display-lg text-lg font-bold text-primary leading-tight">Solagent</h1>
+            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">AI Fleet Manager</p>
+          </div>
+        </div>
+        
+        <nav className="flex flex-col gap-1 mt-6">
+          <button 
+            onClick={() => {
+              setActiveNavItem("command");
+              setActiveTabName("fleet");
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left cursor-pointer ${
+              activeNavItem === "command"
+                ? "bg-primary-container text-on-primary-container font-bold"
+                : "text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary"
+            }`}
+          >
+            <span className="material-symbols-outlined">dashboard</span>
+            <span className="font-body-md text-sm">Command Center</span>
+          </button>
+          <button 
+            onClick={() => {
+              setActiveNavItem("analytics");
+              setActiveTabName("analytics");
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left cursor-pointer ${
+              activeNavItem === "analytics"
+                ? "bg-primary-container text-on-primary-container font-bold"
+                : "text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary"
+            }`}
+          >
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: activeTabName === "analytics" ? "'FILL' 1" : "'FILL' 0" }}>query_stats</span>
+            <span className="font-body-md text-sm">Vault Analytics</span>
+          </button>
+          <a className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary rounded-lg transition-all duration-200 cursor-pointer">
+            <span className="material-symbols-outlined">settings</span>
+            <span className="font-body-md text-sm">Settings</span>
+          </a>
+        </nav>
 
+        <div className="mt-auto flex flex-col gap-4">
+          <Link href="/" className="w-full py-3 bg-primary-container/10 border border-primary/20 text-primary rounded-lg font-bold hover:bg-primary-container/20 transition-all text-sm flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined">home</span>
+            Product Homepage
+          </Link>
+          
+          <div className="border-t border-white/5 pt-4">
+            <a className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary transition-colors text-xs" href="https://github.com/HkSolDev/solagent-vault" target="_blank" rel="noreferrer">
+              <span className="material-symbols-outlined text-sm">description</span>
+              <span>Documentation</span>
+            </a>
+            <a className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary transition-colors text-xs cursor-pointer">
+              <span className="material-symbols-outlined text-sm">help_outline</span>
+              <span>Support</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="ml-64 w-[calc(100vw-16rem)] flex-1 p-6 overflow-y-auto">
+        {/* Header */}
+        <header className="flex justify-between items-center mb-10">
+          <div>
+            <h2 className="font-display-lg text-2xl font-extrabold text-on-surface">
+              {activeTabName === "fleet"
+                ? "Command Center"
+                : "Cognitive Diagnostics"}
+            </h2>
+            <p className="text-on-surface-variant font-body-md text-sm mt-1">
+              {activeTabName === "fleet" 
+                ? "Monitoring active agents across Solana devnet sandbox"
+                : "Real-time inference pathways and fleet performance."}
+            </p>
+          </div>
+          
           <div className="flex items-center gap-4">
-            {/* Interactive Network Switcher Dropdown */}
-            <div className="flex items-center gap-2">
+            {/* RPC Network Switcher */}
+            <div className="glass-panel px-4 py-2 rounded-xl flex items-center gap-3">
               <button
                 onClick={handleNetworkToggle}
-                title="Click to toggle between Devnet and Localnet"
-                className="text-[10px] font-mono px-3 py-1.5 rounded-full border border-glass-border bg-black/40 hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer text-zinc-300"
+                title="Click to toggle network"
+                className="flex items-center gap-2 text-xs font-mono text-secondary font-bold focus:outline-none"
               >
-                <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
-                  network === "devnet" ? "bg-success-emerald" : "bg-vivid-cyan"
-                }`} />
-                RPC: <span className={
-                  network === "devnet" ? "text-success-emerald font-bold" : "text-vivid-cyan font-bold"
-                }>
-                  {network === "devnet" ? (customRpc ? "Custom Devnet" : "Solana Devnet") : "Surfpool Localnet"}
-                </span>
-                <span className="text-[8px] text-zinc-500 font-bold ml-1 uppercase">(Toggle)</span>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  network === "devnet" ? "bg-secondary" : "bg-primary-container"
+                }`}></div>
+                <span>NETWORK: {network === "devnet" ? "SOLANA DEVNET" : "LOCALNET"}</span>
+                <span className="text-[9px] opacity-65">(TOGGLE)</span>
               </button>
 
               {network === "devnet" && (
@@ -87,19 +149,19 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setShowRpcInput(!showRpcInput)}
                     title="Configure Custom RPC URL"
-                    className="p-1.5 rounded-full border border-glass-border bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px]"
+                    className="p-1 rounded bg-white/5 border border-white/10 text-on-surface-variant hover:text-white transition-colors cursor-pointer text-xs"
                   >
                     ⚙️
                   </button>
                   {showRpcInput && (
-                    <div className="absolute right-0 top-8 z-50 p-3 rounded-lg border border-glass-border bg-zinc-950/95 shadow-2xl flex flex-col gap-2 w-72">
+                    <div className="absolute right-0 top-8 z-50 p-3 rounded-lg border border-white/10 bg-surface-container shadow-2xl flex flex-col gap-2 w-72">
                       <div className="text-[9px] font-bold text-zinc-300 uppercase">Custom Devnet RPC URL</div>
                       <input
                         type="text"
                         placeholder="https://devnet.helius-rpc.com/?api-key=..."
                         value={customRpc}
                         onChange={(e) => setCustomRpc(e.target.value)}
-                        className="w-full text-[10px] px-2 py-1 rounded bg-black border border-glass-border text-white font-mono focus:outline-none focus:border-purple-500"
+                        className="w-full text-xs px-2 py-1 rounded bg-background border border-white/10 text-white font-mono focus:outline-none focus:border-primary"
                       />
                       <div className="flex gap-1.5 justify-end">
                         <button
@@ -107,13 +169,13 @@ export default function DashboardPage() {
                             setCustomRpc("");
                             handleSaveCustomRpc("");
                           }}
-                          className="text-[9px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono"
+                          className="text-[10px] px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-zinc-300 font-mono"
                         >
                           Reset
                         </button>
                         <button
                           onClick={() => handleSaveCustomRpc(customRpc)}
-                          className="text-[9px] px-2 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white font-mono font-bold"
+                          className="text-[10px] px-2 py-1 rounded bg-primary-container text-on-primary-container font-mono font-bold"
                         >
                           Save & Reload
                         </button>
@@ -123,51 +185,33 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-            
-            <a 
-              href="/"
-              className="text-xs font-mono px-4 py-1.5 rounded-md border border-glass-border bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors"
-            >
-              ← Product Info
-            </a>
+
+            <button className="w-10 h-10 glass-panel rounded-full flex items-center justify-center hover:text-primary transition-colors cursor-pointer">
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
+            <div className="w-10 h-10 rounded-full bg-surface-variant overflow-hidden border border-white/10">
+              <img alt="Profile" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEGB-B4drZyOXSP7ypsRKSkMSXOURxxl-5aOQ0wq6LoZ-FJtOZqh75TneK3_9LGc6m3C9tioAUiNgZ3K1wmfenY3vT2-r7W1Mier-ZFXNZbcFZOvTTEudvyhedDvHiCGn86A0fc_ZrMKIidnTGSkgxM32LX0_lmU691gMrrtIYhpAZIXSgULp6SojJpOdXIE2g26vLWQLxtM8xstN87wx84WtdgdfCq6ie5oYAsVpgnEPaq2CSxzfQ7WhFUpuS1u7IRf7TGhGiaicQ"/>
+            </div>
           </div>
         </header>
 
-        {/* Dashboard Core Content Workspace */}
-        <div className="w-full max-w-6xl flex flex-col gap-8">
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-glass-border pb-6">
-            <div>
-              <h1 className="text-2xl font-extrabold font-mono tracking-tight text-white flex items-center gap-2">
-                <span>⚡</span> PROGRAMMABLE SECURITY WORKSPACE
-              </h1>
-              <p className="text-xs text-zinc-400 font-mono mt-1">
-                Configure isolated PDA accounts, seed simulated hot-keys, and stress-test on-chain policy revert guards.
-              </p>
-            </div>
-            
-            <div className="flex gap-2">
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-[#0a0a14] border border-glass-border text-zinc-400">
-                Network: <span className="text-electric-purple font-bold uppercase">{network}</span>
-              </span>
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-[#0a0a14] border border-glass-border text-zinc-400">
-                Program: <span className="text-zinc-300 font-bold select-all">C5pq...xr7o</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Main dashboard rules controller simulator containing the 5-Step Wizard & Live Diagnostics */}
-          <div className="w-full">
-            <DashboardSimulator />
-          </div>
-
+        {/* Dashboard Core Simulator */}
+        <div className="w-full">
+          <DashboardSimulator activeTabName={activeTabName} setActiveTabName={setActiveTabName} network={network} />
         </div>
 
         {/* Footer */}
-        <footer className="w-full max-w-6xl text-center text-[10px] text-zinc-500 font-mono mt-20 pt-8 border-t border-glass-border">
-          SolAgent Vault Dashboard • Powered by automated local Surfpool validator nodes.
+        <footer className="w-full py-12 flex flex-col items-center justify-center gap-4 border-t border-white/5 mt-16 text-xs text-on-surface-variant">
+          <p>© 2024 Solagent Vault. Secured by Solana.</p>
+          <div className="flex gap-6">
+            <a className="hover:text-secondary transition-colors" href="#">Terms</a>
+            <a className="hover:text-secondary transition-colors" href="#">Privacy</a>
+            <a className="hover:text-secondary transition-colors" href="#">Status</a>
+            <a className="hover:text-secondary transition-colors" href="https://x.com/HKsoldev" target="_blank" rel="noreferrer">Twitter</a>
+            <a className="hover:text-secondary transition-colors" href="https://github.com/HkSolDev/solagent-vault" target="_blank" rel="noreferrer">GitHub</a>
+          </div>
         </footer>
-      </div>
+      </main>
     </div>
   );
 }

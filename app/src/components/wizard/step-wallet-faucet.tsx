@@ -40,8 +40,8 @@ export default function StepWalletFaucet({
         </p>
 
         {/* Dynamic connection alert */}
-        <div className="flex justify-center py-2 border-b border-glass-border/30">
-          <WalletMultiButton className="!bg-electric-purple hover:!bg-electric-purple/90 !font-mono !text-xs !h-10 !rounded-md shadow-glow-purple transition-all" />
+        <div className="flex justify-center py-2 border-b border-primary/10">
+          <WalletMultiButton className="!bg-primary-container hover:!brightness-110 !text-on-primary !font-mono !text-xs !h-10 !rounded-lg !border !border-primary/30 shadow-[0_0_16px_rgba(0,242,255,0.24)] transition-all" />
         </div>
 
         {connected ? (
@@ -65,7 +65,7 @@ export default function StepWalletFaucet({
               className={`w-full py-2.5 rounded text-xs font-bold font-mono transition-all cursor-pointer ${
                 loading
                   ? "bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed"
-                  : "bg-vivid-cyan/15 hover:bg-vivid-cyan/25 text-vivid-cyan border border-vivid-cyan/35 shadow-glow-cyan"
+                  : "bg-primary-container hover:brightness-110 text-on-primary border border-primary/25 shadow-[0_0_14px_rgba(0,242,255,0.22)]"
               }`}
             >
               {loading ? "Airdropping 1.0 SOL..." : "Claim 1.0 Devnet SOL 🪂"}

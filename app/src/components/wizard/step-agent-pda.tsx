@@ -108,7 +108,7 @@ export default function StepAgentPda({
                   value={agentIdInput}
                   onChange={(e) => setAgentIdInput(e.target.value)}
                   type="number"
-                  className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple"
+                  className="bg-surface-container-low/80 border border-primary/15 px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-primary-container"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -117,7 +117,7 @@ export default function StepAgentPda({
                   value={solSeedInput}
                   onChange={(e) => setSolSeedInput(e.target.value)}
                   type="text"
-                  className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple"
+                  className="bg-surface-container-low/80 border border-primary/15 px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-primary-container"
                 />
               </div>
             </div>
@@ -129,7 +129,7 @@ export default function StepAgentPda({
                   value={maxCallInput}
                   onChange={(e) => setMaxCallInput(e.target.value)}
                   type="text"
-                  className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple"
+                  className="bg-surface-container-low/80 border border-primary/15 px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-primary-container"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -138,7 +138,7 @@ export default function StepAgentPda({
                   value={maxMinuteInput}
                   onChange={(e) => setMaxMinuteInput(e.target.value)}
                   type="text"
-                  className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple"
+                  className="bg-surface-container-low/80 border border-primary/15 px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-primary-container"
                 />
               </div>
             </div>
@@ -156,14 +156,14 @@ export default function StepAgentPda({
                 <button
                   type="button"
                   onClick={() => applyPreset("balanced")}
-                  className="py-1.5 rounded border border-vivid-cyan/30 bg-vivid-cyan/10 text-vivid-cyan font-bold text-[10px] hover:bg-vivid-cyan/20 transition-all cursor-pointer"
+                  className="py-1.5 rounded border border-primary/40 bg-primary/10 text-primary font-bold text-[10px] hover:bg-primary/20 transition-all cursor-pointer"
                 >
                   Balanced
                 </button>
                 <button
                   type="button"
                   onClick={() => applyPreset("aggressive")}
-                  className="py-1.5 rounded border border-electric-purple/30 bg-electric-purple/10 text-electric-purple font-bold text-[10px] hover:bg-electric-purple/20 transition-all cursor-pointer"
+                  className="py-1.5 rounded border border-tertiary/40 bg-tertiary/10 text-tertiary font-bold text-[10px] hover:bg-tertiary/20 transition-all cursor-pointer"
                 >
                   Aggressive
                 </button>
@@ -175,7 +175,7 @@ export default function StepAgentPda({
               <select
                 value={allowedProviderInput}
                 onChange={(e) => setAllowedProviderInput(e.target.value)}
-                className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple mb-2"
+                className="bg-surface-container-low/80 border border-primary/15 px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-primary-container mb-2"
               >
                 {providerPresets.map((preset) => (
                   <option key={preset.label} value={preset.value}>
@@ -188,14 +188,14 @@ export default function StepAgentPda({
                 onChange={(e) => setAllowedProviderInput(e.target.value)}
                 placeholder="e.g. OpenAI billing destination address"
                 type="text"
-                className="bg-white/5 border border-glass-border px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-electric-purple"
+                className="bg-surface-container-low/80 border border-primary/15 px-3 py-2 rounded text-white font-mono focus:outline-none focus:border-primary-container"
               />
             </div>
 
             <button
               onClick={onRegisterAgent}
               disabled={actionLoading}
-              className="py-2.5 rounded bg-electric-purple hover:bg-electric-purple/90 text-white font-bold transition-all shadow-glow-purple cursor-pointer disabled:opacity-50 mt-1"
+              className="py-2.5 rounded bg-primary-container hover:brightness-110 text-on-primary font-bold transition-all shadow-[0_0_16px_rgba(0,242,255,0.24)] cursor-pointer disabled:opacity-50 mt-1"
             >
               {actionLoading ? "Registering Agent PDA..." : "Spawn secure Agent PDA on-chain"}
             </button>

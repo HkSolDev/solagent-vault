@@ -108,3 +108,43 @@ Open [http://localhost:3000](http://localhost:3000) to view your real-time visua
 Below is the verification of the complete 10-test suite passing successfully on Solana Devnet:
 
 ![Solana Devnet Tests Passing](devnet_tests_screenshot.png)
+
+### ✅ Happy Path Evidence (Demo Day Ready)
+
+Use this section directly in your 2-3 minute demo to satisfy the "devnet tests passing" requirement.
+
+**Command run**
+```bash
+anchor test
+```
+
+**Result**
+- `10 passing (15s)`
+- Includes full happy path coverage:
+1. `initialize_vault`
+2. `create_agent`
+3. `deposit`
+4. `spend`
+5. `set_config` (pause, limits, reactivate)
+6. `withdraw` (+ overdraft revert guard)
+7. `close_agent` (sweep + rent reclaim)
+
+<details>
+<summary><strong>Latest passing output snapshot</strong></summary>
+
+```text
+solagent-vault
+✔ Initializes the master vault
+✔ Creates an agent PDA and funds the agent keypair with gas SOL
+✔ Deposits 50 USDC into the agent's token account
+✔ Agent spends 5 USDC to a provider wallet
+✔ Pauses the agent (status -> Paused)
+✔ Updates maxPerCall and maxPerMinute limits
+✔ Reactivates the agent (status -> Active)
+✔ Withdraws 20 USDC from agent back to owner (partial withdraw)
+✔ Reverts when withdrawing more than agent balance (InsufficientBalance)
+✔ Closes the agent, sweeps 50 USDC to owner, and reclaims rent
+
+10 passing (15s)
+```
+</details>

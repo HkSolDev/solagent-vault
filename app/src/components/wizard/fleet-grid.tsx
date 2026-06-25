@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { OnChainAgent } from "../../hooks/use-agent-state";
+import { TxHistoryItem } from "../../hooks/use-simulator-state";
 
 interface FleetGridProps {
   agents: OnChainAgent[];
@@ -11,11 +12,39 @@ interface FleetGridProps {
   onDeposit: (id: number, amount: string) => Promise<void>;
   onWithdraw: (id: number, amount: string) => Promise<void>;
   onCloseAgent: (id: number) => Promise<void>;
-  onLiveAISolveForAgent: (id: number) => void; // Opens modal
-  onBatchRunSolvers: () => void; // Opens modal
+  onLiveAISolveForAgent: (id: number) => void;
+  onBatchRunSolvers: () => void;
   onEmergencyFleetFreeze: () => Promise<void>;
   onCloseAllAgents: () => Promise<void>;
   actionLoading: boolean;
+  walletAddress: string;
+  solBalance: number | null;
+  txHistory: TxHistoryItem[];
+  onDeployNewAgent: () => void;
+}
+
+function shortAddress(address: string) {
+  if (!address) return "Not connected";
+  if (address.length <= 10) return address;
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
+}
+
+function formatAmount(value: number, decimals = 2) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function formatCardAmount(value: number) {
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  if (Math.abs(value) >= 100_000) return `${(value / 1_000).toFixed(1)}K`;
+  return formatAmount(value);
+}
+
+function getAgentAvatar(id: number) {
+  const avatars = ["🤖", "🧠", "🛡️", "⚡", "🛰️", "🦾"];
+  return avatars[id % avatars.length];
 }
 
 export default function FleetGrid({
@@ -31,204 +60,296 @@ export default function FleetGrid({
   onEmergencyFleetFreeze,
   onCloseAllAgents,
   actionLoading,
+  walletAddress,
+  solBalance,
+  txHistory,
+  onDeployNewAgent,
 }: FleetGridProps) {
-  const activeCount = agents.filter((a) => a.status === "Active" && a.balance > 0).length;
-
-  // Local state to track the custom deposit amount for each agent ID independently
   const [depositAmounts, setDepositAmounts] = useState<Record<number, string>>({});
 
+  const activeAgents = useMemo(() => agents.filter((a) => a.status === "Active"), [agents]);
+  const activeWithFunds = useMemo(() => agents.filter((a) => a.status === "Active" && a.balance > 0), [agents]);
+  const totalBalance = useMemo(() => agents.reduce((acc, a) => acc + a.balance, 0), [agents]);
+  const totalTx = txHistory.length;
+  const successTx = txHistory.filter((t) => t.status === "confirmed").length;
+  const successRate = totalTx > 0 ? Math.round((successTx / totalTx) * 100) : 0;
+  const topRows = txHistory.slice(0, 5);
+
   return (
-    <div className="w-full glass-panel p-6 rounded-xl border border-glass-border flex flex-col gap-5 mt-10 bg-white/[0.01]">
-      {/* Fleet diagnostic header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-glass-border/30">
-        <div>
-          <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-            SIMPLE AGENT CONTROL CENTER
-          </h3>
-          <p className="text-[11px] text-zinc-400 font-mono mt-1">
-            Create secure wallets for your agents, add funds, and run them all at once.
-          </p>
+    <div className="w-full flex flex-col gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div className="xl:col-span-7 glass-card rounded-xl border border-glass-border/50 p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="border-r border-glass-border/40 pr-4">
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono font-bold">Wallet Connection</p>
+              <p className="mt-1 text-vivid-cyan font-mono text-sm font-bold">{shortAddress(walletAddress)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono font-bold">Total Vault Balance</p>
+              <p className="mt-1 text-white font-mono text-sm font-bold">{formatAmount(solBalance ?? 0)} SOL</p>
+            </div>
+          </div>
         </div>
+        <div className="xl:col-span-5 flex items-center justify-end">
+          <button
+            onClick={onDeployNewAgent}
+            className="px-6 py-3 rounded-xl bg-primary-container text-on-primary-container font-bold text-sm shadow-[0_0_20px_rgba(0,242,255,0.25)] hover:opacity-95 transition-all cursor-pointer"
+          >
+            + New Agent
+          </button>
+        </div>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-mono px-3 py-1 bg-black/40 border border-glass-border/40 rounded text-zinc-400">
-            Active Agents: <span className="text-success-emerald font-bold">{activeCount}/{agents.length}</span>
-          </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="glass-card rounded-xl border border-glass-border/40 p-5">
+          <p className="text-zinc-300 text-sm">Active Agents</p>
+          <p className="mt-1 text-primary text-4xl font-mono font-bold">{String(activeAgents.length).padStart(2, "0")}</p>
+          <p className="mt-2 text-success-emerald text-sm font-semibold">↗ 100% Uptime</p>
+        </div>
+        <div className="glass-card rounded-xl border border-glass-border/40 p-5">
+          <p className="text-zinc-300 text-sm">24h Transactions</p>
+          <p className="mt-1 text-white text-4xl font-mono font-bold">{formatAmount(totalTx, 0)}</p>
+          <p className="mt-2 text-vivid-cyan text-sm font-semibold">↔ Last: {topRows[0] ? new Date(topRows[0].timestamp).toLocaleTimeString() : "--"}</p>
+        </div>
+        <div className="glass-card rounded-xl border border-glass-border/40 p-5">
+          <p className="text-zinc-300 text-sm">Security Score</p>
+          <p className="mt-1 text-success-emerald text-4xl font-mono font-bold">{successRate}%</p>
+          <p className="mt-2 text-zinc-400 text-sm">Policy Guardrails Active</p>
+        </div>
+        <div className="glass-card rounded-xl border border-glass-border/40 p-5">
+          <p className="text-zinc-300 text-sm">Fleet Balance</p>
+          <p className="mt-1 text-white text-4xl font-mono font-bold tracking-tight">{formatAmount(totalBalance)} SOL</p>
+          <p className="mt-2 text-success-emerald text-sm">Active-funded: {activeWithFunds.length}</p>
+        </div>
+      </div>
 
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-display font-bold text-white">Agent Fleet</h3>
+        <div className="flex items-center gap-2">
           <button
             onClick={onBatchRunSolvers}
             disabled={actionLoading || agents.length === 0}
-            className="text-[10px] font-mono font-bold px-3.5 py-1.5 rounded bg-gradient-to-r from-electric-purple to-purple-600 hover:opacity-90 text-white cursor-pointer shadow-glow-purple disabled:opacity-50 flex items-center gap-1"
+            className="px-4 py-2 rounded-lg border border-primary/25 bg-surface-container-high/70 text-zinc-200 text-sm font-semibold cursor-pointer disabled:opacity-40"
           >
             Start All
           </button>
-
           <button
             onClick={onEmergencyFleetFreeze}
-            disabled={actionLoading || activeCount === 0}
-            className="text-[10px] font-mono font-bold px-3.5 py-1.5 rounded bg-emergency-red/10 hover:bg-emergency-red/20 text-emergency-red border border-emergency-red/20 cursor-pointer disabled:opacity-50 flex items-center gap-1"
+            disabled={actionLoading || activeWithFunds.length === 0}
+            className="px-4 py-2 rounded-lg border border-primary/25 bg-surface-container-high/70 text-amber-300 text-sm font-semibold cursor-pointer disabled:opacity-40"
           >
-            Freeze All
+            Freeze
           </button>
-
           <button
             onClick={onCloseAllAgents}
             disabled={actionLoading || agents.length === 0}
-            className="text-[10px] font-mono font-bold px-3.5 py-1.5 rounded bg-emergency-red/20 hover:bg-emergency-red/30 text-white border border-emergency-red cursor-pointer disabled:opacity-50 flex items-center gap-1"
+            className="px-4 py-2 rounded-lg border border-primary/25 bg-surface-container-high/70 text-rose-300 text-sm font-semibold cursor-pointer disabled:opacity-40"
           >
             Delete All
           </button>
         </div>
       </div>
 
-      {/* Grid wrapper */}
-      {agents.length === 0 ? (
-        <div className="p-10 text-center rounded border border-dashed border-glass-border/50 text-zinc-500 font-mono text-xs">
-          No agents created yet. Spawn an agent in Step 2 above!
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent) => {
-            const isSelected = activeAgentId === agent.id;
-            const currentDepositVal = depositAmounts[agent.id] !== undefined ? depositAmounts[agent.id] : "1000000.0";
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5">
+        {agents.map((agent) => {
+          const isSelected = activeAgentId === agent.id;
+          const currentDepositVal = depositAmounts[agent.id] !== undefined ? depositAmounts[agent.id] : "1000.0";
+          const isFundedActive = agent.status === "Active" && agent.balance > 0;
+          const statusLabel = isFundedActive ? "ACTIVE" : agent.status === "Paused" ? "PAUSED" : "UNFUNDED";
 
-            return (
-              <div
-                key={agent.id}
-                onClick={() => onSelectAgent(agent.id)}
-                className={`glass-panel p-4.5 rounded-lg border transition-all duration-300 flex flex-col gap-3.5 cursor-pointer relative overflow-hidden ${
-                  isSelected
-                    ? "border-electric-purple bg-electric-purple/[0.03] shadow-[0_0_15px_rgba(147,51,234,0.06)]"
-                    : "border-glass-border/30 hover:border-glass-border/80 hover:bg-white/[0.01]"
-                }`}
-              >
-                {/* Active checkmark glow */}
-                {isSelected && (
-                  <div className="absolute top-0 right-0 w-16 h-16 bg-electric-purple/10 blur-xl pointer-events-none" />
-                )}
-
-                {/* Agent Card Header */}
-                <div className="flex justify-between items-center relative z-10">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      (agent.status === "Active" && agent.balance > 0)
-                        ? "bg-success-emerald animate-pulse"
-                        : agent.balance <= 0
-                        ? "bg-amber-500"
-                        : "bg-emergency-red"
-                    }`} />
-                    <h4 className="font-mono font-bold text-white text-xs">Agent #{agent.id}</h4>
+          return (
+            <div
+              key={agent.id}
+              onClick={() => onSelectAgent(agent.id)}
+              className={`glass-card rounded-2xl border p-5 transition-all cursor-pointer ${
+                isSelected ? "border-primary/40 shadow-[0_0_24px_rgba(0,242,255,0.12)]" : "border-primary/15"
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="h-12 w-12 rounded-full border border-primary/40 bg-surface-container-low flex items-center justify-center text-lg shadow-[0_0_16px_rgba(0,242,255,0.16)]">
+                    {getAgentAvatar(agent.id)}
                   </div>
-                  
-                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded uppercase border ${
-                    (agent.status === "Active" && agent.balance > 0)
-                      ? "bg-success-emerald/10 border-success-emerald/20 text-success-emerald"
-                      : agent.balance <= 0
-                      ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
-                      : "bg-emergency-red/10 border-emergency-red/20 text-emergency-red"
-                  }`}>
-                    {agent.status === "Active" && agent.balance <= 0 ? "Unfunded" : agent.status}
-                  </span>
-                </div>
-
-                {/* Key diagnostics table */}
-                <div className="grid grid-cols-2 gap-y-2 gap-x-3 text-[10px] font-mono text-zinc-400 border-t border-b border-glass-border/30 py-2.5 relative z-10">
-                  <div>
-                    Vault Bal:{" "}
-                    <span className="text-white font-bold">${agent.balance.toFixed(2)}</span>
-                  </div>
-                  <div>
-                    Single Cap:{" "}
-                    <span className="text-white font-bold">${agent.maxPerCall.toFixed(2)}</span>
-                  </div>
-                  <div className="col-span-2 truncate">
-                    PDA: <span className="text-zinc-300 font-bold select-all">{agent.publicKey}</span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-[24px] md:text-[28px] leading-none font-display font-bold text-white tracking-tight">Agent #{String(agent.id).padStart(3, "0")}</h4>
+                    <span className={`px-2 py-1 rounded border text-[11px] font-bold tracking-wider ${
+                      statusLabel === "ACTIVE"
+                        ? "text-success-emerald border-success-emerald/30 bg-success-emerald/10"
+                        : statusLabel === "PAUSED"
+                        ? "text-zinc-300 border-zinc-500/30 bg-zinc-500/10"
+                        : "text-amber-300 border-amber-400/30 bg-amber-500/10"
+                    }`}>
+                      {statusLabel}
+                    </span>
+                    </div>
+                    <p className="mt-1 text-zinc-400 font-mono text-xs">PDA: {shortAddress(agent.publicKey)}</p>
                   </div>
                 </div>
-
-                {/* Multi-Agent actions button drawer */}
-                <div className="grid grid-cols-2 gap-2 mt-1.5 relative z-10">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onLiveAISolveForAgent(agent.id);
-                    }}
-                    disabled={actionLoading || agent.status !== "Active" || agent.balance <= 0}
-                    className="py-1.5 rounded bg-electric-purple/15 hover:bg-electric-purple/25 text-electric-purple border border-electric-purple/35 font-bold font-mono text-[9px] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1 transition-all"
-                  >
-                    Start Agent
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTogglePause(agent);
-                    }}
-                    disabled={actionLoading}
-                    className={`py-1.5 rounded font-bold font-mono text-[9px] border cursor-pointer transition-all ${
-                      agent.status === "Active"
-                        ? "bg-emergency-red/15 hover:bg-emergency-red/25 text-emergency-red border-emergency-red/35"
-                        : "bg-success-emerald/15 hover:bg-success-emerald/25 text-success-emerald border-success-emerald/35"
-                    }`}
-                  >
-                    {agent.status === "Active" ? "Pause" : "Activate"}
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onWithdraw(agent.id, agent.balance.toString());
-                    }}
-                    disabled={actionLoading || agent.balance <= 0}
-                    className="py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-glass-border font-bold font-mono text-[9px] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  >
-                    Withdraw
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseAgent(agent.id);
-                    }}
-                    disabled={actionLoading}
-                    className="py-1.5 rounded bg-emergency-red/10 hover:bg-emergency-red/20 text-emergency-red border border-emergency-red/25 font-bold font-mono text-[9px] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                {/* Inline Funding Drawer (Direct Deposit) */}
-                <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-glass-border/30 relative z-10">
-                  <input
-                    type="text"
-                    value={currentDepositVal}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      setDepositAmounts({ ...depositAmounts, [agent.id]: e.target.value });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-white/5 border border-glass-border px-2 py-1 rounded text-white font-mono text-[10px] max-w-[65px] text-center focus:outline-none focus:border-electric-purple"
-                    placeholder="10.0"
-                  />
-                  <span className="text-[9px] text-zinc-500 font-bold uppercase">Tokens</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeposit(agent.id, currentDepositVal);
-                    }}
-                    disabled={actionLoading}
-                    className="ml-auto py-1 px-3 rounded bg-success-emerald hover:bg-success-emerald/90 text-white font-bold font-mono text-[9px] transition-all cursor-pointer shadow-glow-emerald disabled:opacity-50"
-                  >
-                    Fund Agent
-                  </button>
-                </div>
-
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-9 w-9 rounded-lg border border-primary/20 bg-surface-container-high/70 text-zinc-400 hover:text-zinc-200 transition-colors cursor-default"
+                  aria-label="Agent options"
+                >
+                  ⋮
+                </button>
               </div>
-            );
-          })}
+
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="rounded-xl border border-primary/20 bg-surface-container-low/85 px-4 py-3">
+                  <p className="text-[11px] font-mono uppercase text-zinc-500">Vault Balance</p>
+                  <p
+                    className="text-[32px] leading-[1] mt-1 font-mono font-bold text-primary tracking-tight whitespace-nowrap"
+                    title={`${formatAmount(agent.balance)} SOL`}
+                  >
+                    {formatCardAmount(agent.balance)}
+                  </p>
+                  <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mt-1">SOL</p>
+                </div>
+                <div className="rounded-xl border border-primary/20 bg-surface-container-low/85 px-4 py-3">
+                  <p className="text-[11px] font-mono uppercase text-zinc-500">Tx Cap (Limit)</p>
+                  <p
+                    className="text-[32px] leading-[1] mt-1 font-mono font-bold text-white tracking-tight whitespace-nowrap"
+                    title={`${formatAmount(agent.maxPerCall)} SOL`}
+                  >
+                    {formatCardAmount(agent.maxPerCall)}
+                  </p>
+                  <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mt-1">SOL</p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,0.86fr)_44px] gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeposit(agent.id, currentDepositVal);
+                  }}
+                  disabled={actionLoading}
+                  className="h-11 rounded-xl bg-primary-container text-on-primary-container font-bold text-sm cursor-pointer disabled:opacity-50"
+                >
+                  ◉ Fund Agent
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePause(agent);
+                  }}
+                  disabled={actionLoading}
+                  className="h-11 rounded-xl border border-primary/25 bg-surface-container-high/70 text-zinc-200 font-bold text-sm cursor-pointer disabled:opacity-50"
+                >
+                  {agent.status === "Active" ? "▮▮ Pause" : "▶ Resume"}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseAgent(agent.id);
+                  }}
+                  disabled={actionLoading}
+                  className="h-11 w-11 rounded-xl border border-primary/25 bg-surface-container-high/70 text-rose-300 font-bold text-base cursor-pointer disabled:opacity-50"
+                  aria-label={`Delete Agent ${agent.id}`}
+                >
+                  ↪
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-[1fr_auto_auto] gap-2">
+                <input
+                  type="text"
+                  value={currentDepositVal}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setDepositAmounts((prev) => ({ ...prev, [agent.id]: e.target.value }));
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-10 rounded-lg px-3 border border-primary/25 bg-surface-container-low text-sm font-mono text-white focus:outline-none focus:border-primary-container"
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onWithdraw(agent.id, agent.balance.toString());
+                  }}
+                  disabled={actionLoading || agent.balance <= 0}
+                  className="h-10 px-4 rounded-lg border border-primary/25 bg-surface-container-high/70 text-zinc-200 text-sm font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  Withdraw
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLiveAISolveForAgent(agent.id);
+                  }}
+                  disabled={actionLoading || !isFundedActive}
+                  className="h-10 px-4 rounded-lg border border-primary/25 bg-surface-container-high/70 text-primary-container text-sm font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  Run
+                </button>
+              </div>
+            </div>
+          );
+        })}
+
+        {agents.length === 0 && (
+          <button
+            onClick={onDeployNewAgent}
+            className="glass-card rounded-xl border border-primary/30 border-dashed p-10 min-h-[320px] flex flex-col items-center justify-center text-center hover:border-primary/60 transition-all cursor-pointer"
+          >
+            <div className="w-16 h-16 rounded-full bg-primary/15 text-primary text-5xl flex items-center justify-center">+</div>
+            <h4 className="mt-4 text-2xl font-display font-bold text-white">Deploy New Agent</h4>
+            <p className="mt-2 text-zinc-400 max-w-xs">
+              Initialize a new autonomous agent with a dedicated PDA vault.
+            </p>
+          </button>
+        )}
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xl font-display font-bold text-white">Recent Fleet Activity</h3>
         </div>
-      )}
+        <div className="glass-card rounded-xl border border-primary/15 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-white/[0.03]">
+                <th className="text-left p-4 text-[11px] uppercase font-mono tracking-wider text-zinc-500">Time</th>
+                <th className="text-left p-4 text-[11px] uppercase font-mono tracking-wider text-zinc-500">Agent</th>
+                <th className="text-left p-4 text-[11px] uppercase font-mono tracking-wider text-zinc-500">Action</th>
+                <th className="text-left p-4 text-[11px] uppercase font-mono tracking-wider text-zinc-500">Amount</th>
+                <th className="text-left p-4 text-[11px] uppercase font-mono tracking-wider text-zinc-500">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topRows.length === 0 ? (
+                <tr>
+                  <td className="p-6 text-zinc-500 font-mono text-sm" colSpan={5}>
+                    No activity yet. Run your first agent action to populate this log.
+                  </td>
+                </tr>
+              ) : (
+                topRows.map((tx, idx) => (
+                  <tr key={idx} className="border-t border-primary/10">
+                    <td className="p-4 font-mono text-zinc-300">{new Date(tx.timestamp).toLocaleTimeString()}</td>
+                    <td className="p-4 font-display text-white font-bold">{tx.id !== undefined ? `Agent #${String(tx.id).padStart(3, "0")}` : "Global"}</td>
+                    <td className="p-4 text-zinc-300">{tx.type}</td>
+                    <td className="p-4 font-mono text-primary">{typeof tx.delta === "number" ? `${formatAmount(tx.delta)} SOL` : "--"}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded border text-xs font-semibold ${
+                        tx.status === "confirmed"
+                          ? "text-success-emerald border-success-emerald/30 bg-success-emerald/10"
+                          : tx.status === "failed"
+                          ? "text-emergency-red border-emergency-red/30 bg-emergency-red/10"
+                          : "text-amber-300 border-amber-300/30 bg-amber-300/10"
+                      }`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

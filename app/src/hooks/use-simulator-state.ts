@@ -58,7 +58,7 @@ const SERVER_POOLS: Record<Exclude<LlmProvider, "auto">, string[]> = {
 };
 
 export function useSimulatorState() {
-  const AUTO_FUND_NEW_AGENT_TOKENS = "1000000.0";
+  const AUTO_FUND_NEW_AGENT_TOKENS = "1000.0";
 
   const wallet = useWallet();
   const { publicKey, connected } = wallet;
@@ -122,7 +122,7 @@ export function useSimulatorState() {
   const [solSeedInput, setSolSeedInput] = useState("0.05");
 
   // Interaction inputs
-  const [depositAmount, setDepositAmount] = useState("1000000.0");
+  const [depositAmount, setDepositAmount] = useState("1000.0");
   const [spendAmount, setSpendAmount] = useState("1.5");
 
   // Multi-LLM solver configurations
@@ -744,7 +744,7 @@ export function useSimulatorState() {
 
   // Helper to deploy custom mint
   const deployCustomMint = async (): Promise<PublicKey> => {
-    addLog("info", "🛠️ Custom orbsmarket token mint not found on-chain. Deploying custom mint first...");
+    addLog("info", "🛠️ Custom orbmarkets.io token mint not found on-chain. Deploying custom mint first...");
     const mintKeypair = Keypair.generate();
     const rentExemptBalance = await connection.getMinimumBalanceForRentExemption(MINT_SIZE);
 
@@ -823,7 +823,7 @@ export function useSimulatorState() {
       mode: "real",
       status: "confirmed",
     });
-    addLog("success", `🎉 Custom orbsmarket Token Mint successfully deployed! Address: ${mintKeypair.publicKey.toBase58()}`);
+    addLog("success", `🎉 Custom orbmarkets.io Token Mint successfully deployed! Address: ${mintKeypair.publicKey.toBase58()}`);
     setUsdcMintInput(mintKeypair.publicKey.toBase58());
     localStorage.setItem("solagent_usdc_mint", mintKeypair.publicKey.toBase58());
 
@@ -853,7 +853,7 @@ export function useSimulatorState() {
     const id = customId !== undefined ? customId : activeTab;
     const amountVal = customAmount !== undefined ? customAmount : depositAmount;
 
-    addLog("info", `Initiating deposit of $${amountVal} orbsmarket into Agent #${id} Vault...`);
+    addLog("info", `Initiating deposit of $${amountVal} orbmarkets.io into Agent #${id} Vault...`);
 
     try {
       const vaultPda = getVaultPda(publicKey);
@@ -924,7 +924,7 @@ export function useSimulatorState() {
 
         if (needsMint && isAuthority) {
           const mintAmt = depositValBigInt > BigInt("1000000000000") ? depositValBigInt * BigInt(2) : BigInt("1000000000000");
-          addLog("info", `🛠️ Minting additional custom tokens to your wallet (${Number(mintAmt) / 1_000_000} orbsmarket)...`);
+          addLog("info", `🛠️ Minting additional custom tokens to your wallet (${Number(mintAmt) / 1_000_000} orbmarkets.io)...`);
           tx.add(
             createMintToInstruction(
               usdcMintKey,
@@ -993,7 +993,7 @@ export function useSimulatorState() {
       addLog("success", `🔗 Deposit Explorer Link: ${explorerUrl}`);
 
       addLog("info", "⚙️ Awaiting Devnet block verification...");
-      addLog("success", `Deposited $${amountVal} orbsmarket into Agent #${id} Vault on-chain! 🎉`);
+      addLog("success", `Deposited $${amountVal} orbmarkets.io into Agent #${id} Vault on-chain! 🎉`);
       
       // Update local overrides instantly
       setLocalAgentOverrides(prev => ({
@@ -1875,7 +1875,7 @@ export function useSimulatorState() {
 
     addLog("warning", `📥 [Agent #${id}] Captured Paywall Challenge:`);
     addLog("info", `   - Target: ${mockChallenge.destination}`);
-    addLog("info", `   - Budget Requested: $${(mockChallenge.amount / 1_000_000).toFixed(2)} orbsmarket`);
+    addLog("info", `   - Budget Requested: $${(mockChallenge.amount / 1_000_000).toFixed(2)} orbmarkets.io`);
 
     const systemInstruction = `
 You are an autonomous AI Agent equipped with a sandboxed Solana Token Vault.
@@ -2244,7 +2244,7 @@ ${JSON.stringify(mockChallenge, null, 2)}
               status: "failed",
               message: errMsg || "Insufficient funds",
             });
-            triggerErrorPopup("Agent Vault: Insufficient Token Balance", new Error("The Agent Vault Token Account does not have enough custom orbsmarket tokens to cover the paywall request. Please fund this agent in the fleet controller grid."));
+            triggerErrorPopup("Agent Vault: Insufficient Token Balance", new Error("The Agent Vault Token Account does not have enough custom orbmarkets.io tokens to cover the paywall request. Please fund this agent in the fleet controller grid."));
             updateSolverState(id, "error");
             setSolverErrorMsg("Agent Vault has Insufficient Token Balance to complete this payment.");
             return false;

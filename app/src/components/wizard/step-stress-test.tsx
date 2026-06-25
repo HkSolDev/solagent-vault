@@ -37,13 +37,13 @@ export default function StepStressTest({
         </p>
 
         {/* Input to change amount for testing */}
-        <div className="flex items-center gap-3 p-3 rounded bg-black/40 border border-glass-border/30">
+        <div className="flex items-center gap-3 p-3 rounded bg-surface-container-low/70 border border-primary/15">
           <span className="text-zinc-500 uppercase text-[10px]">Test Spend Amount:</span>
           <input
             value={spendAmount}
             onChange={(e) => setSpendAmount(e.target.value)}
             type="text"
-            className="bg-white/5 border border-glass-border/50 px-3 py-1 rounded text-white font-mono max-w-[80px] text-center focus:outline-none"
+            className="bg-surface-container-low/80 border border-primary/15 px-3 py-1 rounded text-white font-mono max-w-[80px] text-center focus:outline-none focus:border-primary-container"
           />
           <span className="text-zinc-400">Tokens</span>
         </div>
@@ -53,7 +53,7 @@ export default function StepStressTest({
           <button
             onClick={() => onSpendTrigger("normal")}
             disabled={actionLoading}
-            className="py-2.5 px-3.5 rounded bg-zinc-800 hover:bg-zinc-700/80 font-mono text-[11px] text-left text-zinc-200 border border-glass-border transition-all flex justify-between cursor-pointer disabled:opacity-50"
+            className="py-2.5 px-3.5 rounded bg-surface-container-high/60 hover:bg-surface-container-high/80 font-mono text-[11px] text-left text-zinc-200 border border-primary/20 transition-all flex justify-between cursor-pointer disabled:opacity-50"
           >
             <span>✅ Normal Spend Request</span>
             <span className="text-zinc-500 font-bold uppercase">Under Limits</span>
